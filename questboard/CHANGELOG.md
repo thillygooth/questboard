@@ -6,7 +6,7 @@
 - Initial release
 - Pixel art RPG-themed chore tracking for up to 6 players
 - Daily, weekly, and monthly chore quests
-- Monster battle system — complete chores to damage your assigned monster
+- Monster battle system - complete chores to damage your assigned monster
 - Crit system with 5% base chance, scales with player level
 - XP and leveling system
 - Gold rewards for defeating monsters, penalty if defeated by midnight
