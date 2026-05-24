@@ -1,6 +1,6 @@
 name: "Questboard"
 description: "Gamified chore tracker for families - pixel RPG style"
-version: "1.0.7"
+version: "1.0.8"
 slug: "questboard"
 url: "https://github.com/thillygooth/questboard"
 
@@ -20,9 +20,9 @@ panel_icon: "mdi:sword-cross"
 panel_title: "Questboard"
 
 ports:
-  8099/tcp: 8099
+  "8099/tcp": 8099
 ports_description:
-  8099/tcp: "Questboard web UI"
+  "8099/tcp": "Questboard web UI"
 
 homeassistant: "2024.1.0"
 
