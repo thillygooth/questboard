@@ -1,28 +1,28 @@
 name: "Questboard"
-description: "Gamified chore tracker for families — pixel RPG style"
-version: "1.0.3"
+description: "Gamified chore tracker for families - pixel RPG style"
+version: "1.0.4"
 slug: "questboard"
 url: "https://github.com/thillygooth/questboard"
 
-# Supported architectures (image is built for all three via GitHub Actions)
 arch:
   - amd64
   - aarch64
   - armv7
 
-# Pre-built image from GitHub Container Registry
-# Tag matches the version field above; update here before tagging a release
+startup: application
+boot: auto
+
 image: "ghcr.io/thillygooth/questboard:{version}"
 
-# HA Ingress: app is accessible via HA sidebar with no port forwarding needed
 ingress: true
 ingress_port: 8099
 panel_icon: "mdi:sword-cross"
 panel_title: "Questboard"
 
-# Minimum HA version
 homeassistant: "2024.1.0"
 
-# /data is mapped for persistent state storage (backed up with HA snapshots)
+options: {}
+schema: {}
+
 map:
   - data:rw

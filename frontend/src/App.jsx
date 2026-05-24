@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ALL_CHORES, REWARDS } from './data';
-import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, getLevelFromXP, critChanceForLevel } from './logic';
+import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, getLevelFromXP, critChanceForLevel, luckForLevel } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
@@ -27,6 +27,7 @@ function makeDefaultState(players) {
     monthKey: '',
     history: [],
     monsterDamage: {},
+    monsterBaseline: {},
     monsterPenalties: {},
     assignedMonsters: {},
   };
@@ -55,7 +56,7 @@ function applyAutoResets(raw, players) {
 
     if (yKey) {
       players.forEach(pl => {
-        const m = state.assignedMonsters?.[pl.id] || dateSeededMonster(pl, yKey);
+        const m = dateSeededMonster(pl, yKey);
         const dmg = (state.monsterDamage?.[pl.id]?.[yKey]) || 0;
         if (dmg >= m.maxHP) {
           newStreaks[pl.id] = (newStreaks[pl.id] || 0) + 1;
@@ -78,6 +79,7 @@ function applyAutoResets(raw, players) {
     state.streaks = newStreaks;
     state.dailyDone = {};
     state.todayKey = todayKey();
+    state.monsterBaseline = {};
     changed = true;
   }
 
@@ -224,38 +226,55 @@ export default function App() {
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
     const m = serverState.assignedMonsters?.[selected] || dateSeededMonster(player, tKey);
-    const prevDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
+    const totalDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
+    const baseline = (serverState.monsterBaseline?.[selected]?.[tKey]) || 0;
+    const prevDmgOnCurrent = totalDmg - baseline;
 
     const playerXp = serverState.xp?.[selected] || 0;
     const { level } = getLevelFromXP(playerXp);
-    const isCrit = prevDmg < m.maxHP && Math.random() < critChanceForLevel(level);
+    const isCrit = prevDmgOnCurrent < m.maxHP && Math.random() < critChanceForLevel(level);
     const actualPts = isCrit ? chore.pts * 2 : chore.pts;
 
-    const newDmg = prevDmg + actualPts;
-    const hp = Math.max(0, m.maxHP - newDmg);
-    const justKilled = hp === 0 && prevDmg < m.maxHP;
+    const newDmgOnCurrent = prevDmgOnCurrent + actualPts;
+    const hp = Math.max(0, m.maxHP - newDmgOnCurrent);
+    const justKilled = hp === 0 && prevDmgOnCurrent < m.maxHP;
 
     const xpGain = justKilled ? Math.max(2, Math.ceil(m.gold / 3)) : 0;
     const newXp = { ...(serverState.xp || {}), [selected]: playerXp + xpGain };
     const { level: newLevel } = getLevelFromXP(playerXp + xpGain);
     const leveledUp = justKilled && newLevel > level;
 
+    const luck = luckForLevel(level);
+    const isLucky = justKilled && Math.random() < luck;
+    const luckyGold = isLucky ? Math.ceil(m.gold * 0.5) : 0;
+    const totalGoldGain = m.gold + luckyGold;
+    const newTotalDmg = totalDmg + actualPts;
+    const newBaseline = justKilled ? newTotalDmg : baseline;
+    const newMonster = justKilled ? randomMonster(player) : null;
+
     const newState = {
       ...serverState,
       [storeKey]: { ...store, [choreId]: selected },
       gold: justKilled
-        ? { ...serverState.gold, [selected]: (serverState.gold[selected] || 0) + m.gold }
+        ? { ...serverState.gold, [selected]: (serverState.gold[selected] || 0) + totalGoldGain }
         : serverState.gold,
       xp: newXp,
       history: [
         ...(serverState.history || []),
         { type: 'chore', player: player.name, name: chore.name, pts: actualPts, crit: isCrit },
-        ...(justKilled ? [{ type: 'gold', player: player.name, name: m.name, pts: m.gold }] : []),
+        ...(justKilled ? [{ type: 'gold', player: player.name, name: m.name, pts: totalGoldGain, lucky: isLucky }] : []),
       ],
       monsterDamage: {
         ...serverState.monsterDamage,
-        [selected]: { ...(serverState.monsterDamage?.[selected] || {}), [tKey]: newDmg },
+        [selected]: { ...(serverState.monsterDamage?.[selected] || {}), [tKey]: newTotalDmg },
       },
+      monsterBaseline: justKilled ? {
+        ...serverState.monsterBaseline,
+        [selected]: { ...(serverState.monsterBaseline?.[selected] || {}), [tKey]: newBaseline },
+      } : serverState.monsterBaseline,
+      assignedMonsters: justKilled
+        ? { ...serverState.assignedMonsters, [selected]: newMonster }
+        : serverState.assignedMonsters,
     };
 
     await updateState(newState);
@@ -267,9 +286,8 @@ export default function App() {
     } else if (justKilled) {
       playKill();
       const allDone = players.every(pl => {
-        const plDmg = (newState.monsterDamage?.[pl.id]?.[tKey]) || 0;
-        const plM = newState.assignedMonsters?.[pl.id] || dateSeededMonster(pl, tKey);
-        return plDmg >= plM.maxHP;
+        const plBaseline = newState.monsterBaseline?.[pl.id]?.[tKey] || 0;
+        return plBaseline > 0;
       });
       if (allDone) {
         setTimeout(() => { playFanfare(); setCelebration(true); }, 600);
@@ -278,10 +296,11 @@ export default function App() {
       playHit(chore.pts);
     }
 
-    const critTag = isCrit ? ' ⚡ CRIT!' : '';
-    const levelTag = leveledUp ? ` Level up! → Lv ${newLevel}` : '';
+    const critTag = isCrit ? ' CRIT!' : '';
+    const levelTag = leveledUp ? ` Level up! Lv ${newLevel}` : '';
+    const luckyTag = isLucky ? ` +${luckyGold} lucky gold!` : '';
     const msg = justKilled
-      ? `${player.name} slew the ${m.name}!${critTag} +${m.gold} gold${levelTag}`
+      ? `${player.name} slew the ${m.name}!${critTag} +${totalGoldGain} gold${luckyTag}${levelTag}`
       : `${player.name} hits ${m.name} for ${actualPts}!${critTag} HP: ${hp}/${m.maxHP}`;
     showToast(msg);
   }, [selected, serverState, players, activeChores, updateState, showToast]);
@@ -296,10 +315,19 @@ export default function App() {
 
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
-    const m = serverState.assignedMonsters?.[selected] || dateSeededMonster(player, tKey);
+    const baseline = (serverState.monsterBaseline?.[selected]?.[tKey]) || 0;
     const prevDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
-    const newDmg = Math.max(0, prevDmg - chore.pts);
-    const wasKillShot = prevDmg >= m.maxHP && newDmg < m.maxHP;
+
+    if (prevDmg - chore.pts < baseline) {
+      showToast("Can't undo past a monster kill");
+      return;
+    }
+
+    const m = serverState.assignedMonsters?.[selected] || dateSeededMonster(player, tKey);
+    const prevDmgOnCurrent = prevDmg - baseline;
+    const newDmgOnCurrent = Math.max(0, prevDmgOnCurrent - chore.pts);
+    const wasKillShot = prevDmgOnCurrent >= m.maxHP && newDmgOnCurrent < m.maxHP;
+    const newDmg = prevDmg - chore.pts;
 
     const updatedStore = { ...store };
     delete updatedStore[choreId];
@@ -485,6 +513,7 @@ export default function App() {
             isSelected={selected === p.id}
             onClick={() => selectPlayer(p.id)}
             monsterDamage={state.monsterDamage}
+            monsterBaseline={state.monsterBaseline}
             lastHit={lastHits[p.id]}
             streak={state.streaks?.[p.id] || 0}
             monster={state.assignedMonsters?.[p.id]}

@@ -630,6 +630,13 @@ body {
   opacity: 0.85;
 }
 
+.luck-chance {
+  font-family: var(--pixel);
+  font-size: 7px;
+  color: #70c0a0;
+  opacity: 0.85;
+}
+
 .xp-bar-outer {
   width: 100%;
   height: 4px;
@@ -774,6 +781,12 @@ body {
   color: var(--text2);
   cursor: pointer;
   animation: gem-bounce 1.4s ease-in-out infinite;
+}
+
+.pixel-num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7em;
+  letter-spacing: 0;
 }
 
 /* ── Scrollbar ── */

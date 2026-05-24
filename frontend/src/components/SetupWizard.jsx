@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { ALL_CHORES, REWARDS } from '../data';
 import TileSprite from './TileSprite';
 
+const ICON_CHOICES = [
+  '🧹','🧽','🍽️','🛏️','🧺','🌱','🚿','🗑️',
+  '🐕','🐱','🍲','🛒','🪣','🧴','🔧','🧼',
+  '🪟','🚗','📦','💡','🔑','🪴','🧲','🏠',
+  '⭐','🎯','📚','🎮','🎂','🍦','🎬','🎲',
+  '🛋️','💎','🌟','🎁','🍕','🏆','🎵','🎀',
+];
+
 const CLASSES = [
   { id: 'warrior', label: 'Warrior', tile: 87 },
   { id: 'mage',    label: 'Mage',    tile: 84 },
@@ -246,14 +254,29 @@ function CycleBtn({ value, onClick }) {
 
 // ── Shared: custom item form ──────────────────────────────────────────────────
 function CustomForm({ form, setForm, onSubmit, onCancel, extraFields }) {
+  const [showPicker, setShowPicker] = useState(false);
   return (
     <div style={{ background: '#0d0d20', border: '1px solid #3a3a6e', padding: 12, marginBottom: 16 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         <input style={{ ...S.input, flex: 3 }} placeholder="Name" value={form.name}
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
-        <input style={{ ...S.input, flex: 1, textAlign: 'center' }} placeholder="Icon" value={form.icon}
-          maxLength={2} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} />
+        <button
+          style={{ ...S.btn, fontSize: 20, padding: '4px 10px', minWidth: 48 }}
+          onClick={() => setShowPicker(p => !p)}
+          title="Pick icon"
+        >{form.icon || '❓'}</button>
       </div>
+      {showPicker && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8, background: '#080818', padding: 8, border: '1px solid #2a2a4a' }}>
+          {ICON_CHOICES.map(ic => (
+            <button
+              key={ic}
+              style={{ background: form.icon === ic ? '#3a3a6e' : 'none', border: '1px solid transparent', fontSize: 18, cursor: 'pointer', padding: 4, borderRadius: 2 }}
+              onClick={() => { setForm(f => ({ ...f, icon: ic })); setShowPicker(false); }}
+            >{ic}</button>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         {extraFields}
         <select style={{ ...S.input, flex: 1 }} value={form.who}

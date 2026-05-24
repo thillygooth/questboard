@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { todayKey, dateSeededMonster, getLevelFromXP, critChanceForLevel } from '../logic';
+import { todayKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel } from '../logic';
 
 import TileSprite from './TileSprite';
 import MonsterSprite from './MonsterSprite';
@@ -57,10 +57,12 @@ const MONSTER_CFG = {
   cyber_drone:      { src: '/sprites/monsters2/cyber_drone.png',     sw: 320, sh: 288, fs: 32, fr: 4 },
 };
 
-export default function PlayerCard({ player, gold, xp, isSelected, onClick, monsterDamage, lastHit, streak, monster }) {
+export default function PlayerCard({ player, gold, xp, isSelected, onClick, monsterDamage, monsterBaseline, lastHit, streak, monster }) {
   const tKey = todayKey();
   const m = monster || dateSeededMonster(player, tKey);
-  const dmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
+  const totalDmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
+  const baseline = (monsterBaseline?.[player.id]?.[tKey]) || 0;
+  const dmg = totalDmg - baseline;
   const hp = Math.max(0, m.maxHP - dmg);
   const dead = hp === 0;
   const pct = Math.round((hp / m.maxHP) * 100);
@@ -98,12 +100,13 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
         <div className="player-class">{charCfg.label}</div>
         <div className="player-pts">
           <span className="gold-coin" />
-          {gold}
+          <span className="pixel-num">{gold}</span>
           <span className="player-pts-label">gold</span>
         </div>
         <div className="player-level">
           <span className="level-badge">Lv {level}</span>
           <span className="crit-chance">{critPct}% crit</span>
+          <span className="luck-chance">{Math.round(luckForLevel(level) * 100)}% luck</span>
         </div>
         <div className="xp-bar-outer" title={`${xpInLevel}/${xpNeeded} XP`}>
           <div className="xp-bar-fill" style={{ width: `${Math.round((xpInLevel / xpNeeded) * 100)}%` }} />
@@ -147,7 +150,7 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
             </>
           )}
         </div>
-        <div className="hp-text">{dead ? `+${m.gold} gold!` : `HP ${hp}/${m.maxHP}`}</div>
+        <div className="hp-text"><span className="pixel-num">{dead ? `+${m.gold} gold!` : `HP ${hp}/${m.maxHP}`}</span></div>
         <div className="hp-bar-outer">
           <div className={`hp-bar-fill${low ? ' low' : ''}`} style={{ width: `${pct}%` }} />
         </div>

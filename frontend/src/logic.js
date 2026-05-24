@@ -54,11 +54,15 @@ export function getLevelFromXP(totalXp) {
   while (xp >= threshold) {
     xp -= threshold;
     level++;
-    threshold += 10;
+    threshold = Math.floor(10 + 5 * (level - 1) * (level - 1));
   }
   return { level, xpInLevel: xp, xpNeeded: threshold };
 }
 
 export function critChanceForLevel(level) {
   return 0.05 + (level - 1) * 0.01;
+}
+
+export function luckForLevel(level) {
+  return Math.min(0.5, 0.05 + (level - 1) * 0.02);
 }
