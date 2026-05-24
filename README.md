@@ -44,10 +44,13 @@ Questboard appears in your HA sidebar. No port forwarding required.
 git clone https://github.com/thillygooth/questboard
 cd questboard
 docker build -t questboard .
-docker run -d -p 8099:8099 -v ./data:/data questboard
+mkdir -p /opt/questboard/data
+docker run -d -p 8099:8099 -v /opt/questboard/data:/data questboard
 ```
 
 Open `http://localhost:8099`.
+
+> **Note:** Use an absolute path for the data volume (`/opt/questboard/data` above). Relative paths like `./data` can fail if the working directory isn't writable. Choose any writable absolute path you prefer.
 
 ---
 
