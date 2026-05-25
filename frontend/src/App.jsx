@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS } from './data';
-import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle } from './logic';
+import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, resolveMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
@@ -260,7 +260,7 @@ export default function App() {
 
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
-    const m = serverState.assignedMonsters?.[selected] || dateSeededMonster(player, tKey);
+    const m = resolveMonster(serverState.assignedMonsters?.[selected], player) || dateSeededMonster(player, tKey);
     const totalDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
     const baseline = (serverState.monsterBaseline?.[selected]?.[tKey]) || 0;
     const prevDmgOnCurrent = totalDmg - baseline;
@@ -408,7 +408,7 @@ export default function App() {
       return;
     }
 
-    const m = serverState.assignedMonsters?.[selected] || dateSeededMonster(player, tKey);
+    const m = resolveMonster(serverState.assignedMonsters?.[selected], player) || dateSeededMonster(player, tKey);
     const prevDmgOnCurrent = prevDmg - baseline;
     const newDmgOnCurrent = Math.max(0, prevDmgOnCurrent - chore.pts);
     const wasKillShot = prevDmgOnCurrent >= m.maxHP && newDmgOnCurrent < m.maxHP;

@@ -802,12 +802,12 @@ body {
   position: fixed;
   bottom: 8px;
   right: 12px;
-  font-family: var(--pixel);
-  font-size: 11px;
-  color: var(--text2);
-  opacity: 0.75;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--gold);
+  opacity: 0.6;
   pointer-events: none;
-  z-index: 2;
+  z-index: 100;
   letter-spacing: 0.03em;
 }
 

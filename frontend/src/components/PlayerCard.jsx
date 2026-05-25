@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { todayKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel, getPlayerTitle } from '../logic';
+import { todayKey, dateSeededMonster, resolveMonster, getLevelFromXP, critChanceForLevel, luckForLevel, getPlayerTitle } from '../logic';
 import { BADGES } from '../data';
 import TileSprite from './TileSprite';
 import MonsterSprite from './MonsterSprite';
@@ -66,7 +66,7 @@ const MONSTER_CFG = {
 
 export default function PlayerCard({ player, gold, xp, isSelected, onClick, monsterDamage, monsterBaseline, lastHit, streak, monster, prestige, badges, onPrestige }) {
   const tKey = todayKey();
-  const m = monster || dateSeededMonster(player, tKey);
+  const m = resolveMonster(monster, player) || dateSeededMonster(player, tKey);
   const totalDmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
   const baseline = (monsterBaseline?.[player.id]?.[tKey]) || 0;
   const dmg = totalDmg - baseline;

@@ -21,6 +21,14 @@ export function todayDow() {
   return new Date().getDay();
 }
 
+// Re-derive HP/gold from current data.js by ID, so stale stored objects always use latest values.
+export function resolveMonster(stored, player) {
+  if (!stored) return null;
+  const base = MONSTERS.find(m => m.id === stored.id) ?? MONSTERS[0];
+  const isKid = player.mode === 'kids';
+  return { ...base, maxHP: isKid ? base.kidHP : base.adultHP, gold: isKid ? base.kidGold : base.gold };
+}
+
 // player is a full player object with .id and .mode ('kids' | 'adults')
 export function randomMonster(player) {
   const m = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
