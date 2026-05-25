@@ -4,6 +4,13 @@ import { BADGES } from '../data';
 import TileSprite from './TileSprite';
 import MonsterSprite from './MonsterSprite';
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 const CLASS_TILES = {
   warrior: { tile: 87, label: 'Warrior'  },
   mage:    { tile: 84, label: 'Mage'     },
@@ -95,7 +102,7 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
   }, [lastHit]);
 
   return (
-    <div className={`player-card ${isSelected ? 'active' : ''}`} onClick={onClick}>
+    <div className={`player-card ${isSelected ? 'active' : ''}`} onClick={onClick} style={{ backgroundColor: hexToRgba(player.color, 0.10) }}>
       <div className={`char-sprite${isSelected ? ' char-active' : ''}`}>
         <TileSprite tile={charCfg.tile} scale={4} />
       </div>
@@ -117,7 +124,7 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
           <span className="luck-chance">{Math.round(luckForLevel(level) * 100)}% luck</span>
         </div>
         <div className="xp-bar-outer" title={`${xpInLevel}/${xpNeeded} XP`}>
-          <div className="xp-bar-fill" style={{ width: `${Math.round((xpInLevel / xpNeeded) * 100)}%` }} />
+          <div className="xp-bar-fill" style={{ width: `${Math.round((xpInLevel / xpNeeded) * 100)}%`, background: `linear-gradient(90deg, ${player.color}, ${player.textColor})` }} />
         </div>
         {streak > 0 && (
           <div className="player-streak">

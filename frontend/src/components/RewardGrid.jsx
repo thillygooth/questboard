@@ -2,6 +2,13 @@ import React from 'react';
 import { getRewardsFor } from '../logic';
 import TileSprite from './TileSprite';
 
+function rewardTier(cost) {
+  if (cost <= 18) return 'tier-quick';
+  if (cost <= 44) return 'tier-mid';
+  if (cost <= 80) return 'tier-big';
+  return 'tier-dream';
+}
+
 export default function RewardGrid({ player, gold, activeRewards, onRedeemReward }) {
   const rewards = getRewardsFor(player, activeRewards);
 
@@ -14,7 +21,7 @@ export default function RewardGrid({ player, gold, activeRewards, onRedeemReward
         {rewards.map(r => (
           <div
             key={r.id}
-            className={`reward${gold < r.cost ? ' cant-afford' : ''}`}
+            className={`reward ${rewardTier(r.cost)}${gold < r.cost ? ' cant-afford' : ''}`}
             onClick={() => gold >= r.cost && onRedeemReward(r.id)}
           >
             <div className="reward-top">

@@ -47,7 +47,7 @@ export default function DungeonBackground() {
       const tilesX = Math.ceil(canvas.width  / DRAW_PX) + 1;
       const tilesY = Math.ceil(canvas.height / DRAW_PX) + 1;
 
-      ctx.globalAlpha = 0.11;
+      ctx.globalAlpha = 0.20;
       for (let ty = 0; ty < tilesY; ty++) {
         for (let tx = 0; tx < tilesX; tx++) {
           const s   = seeded(tx, ty);
@@ -73,6 +73,20 @@ export default function DungeonBackground() {
       grad.addColorStop(0, 'rgba(8,10,13,0)');
       grad.addColorStop(1, 'rgba(8,10,13,0.85)');
       ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Torch glows in top corners
+      const torchR = Math.min(canvas.width, canvas.height) * 0.38;
+      const g1 = ctx.createRadialGradient(0, 0, 0, 0, 0, torchR);
+      g1.addColorStop(0, 'rgba(255,140,30,0.11)');
+      g1.addColorStop(1, 'rgba(255,140,30,0)');
+      ctx.fillStyle = g1;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const g2 = ctx.createRadialGradient(canvas.width, 0, 0, canvas.width, 0, torchR);
+      g2.addColorStop(0, 'rgba(255,140,30,0.09)');
+      g2.addColorStop(1, 'rgba(255,140,30,0)');
+      ctx.fillStyle = g2;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 

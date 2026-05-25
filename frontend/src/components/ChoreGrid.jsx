@@ -3,7 +3,12 @@ import { getChoresFor } from '../logic';
 import TileSprite from './TileSprite';
 
 function dmgClass(p) {
-  return p === 1 ? 'pts-1' : p === 2 ? 'pts-2' : p === 3 ? 'pts-3' : 'pts-5';
+  if (p <= 1) return 'pts-1';
+  if (p === 2) return 'pts-2';
+  if (p === 3) return 'pts-3';
+  if (p === 4) return 'pts-4';
+  if (p === 5) return 'pts-5';
+  return 'pts-6';
 }
 
 function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selectedPlayerId, onClaim, onUnclaim, bonusChoreId }) {
@@ -23,7 +28,7 @@ function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selecte
 
   return (
     <div
-      className={`chore${isDone ? ' done' : ''}${canUndo ? ' undoable' : ''}${chore.id === bonusChoreId ? ' bonus' : ''}`}
+      className={`chore ${chore.freq}${isDone ? ' done' : ''}${canUndo ? ' undoable' : ''}${chore.id === bonusChoreId ? ' bonus' : ''}`}
       onClick={handleClick}
       title={canUndo ? 'Tap to undo' : undefined}
     >
@@ -63,14 +68,22 @@ export default function ChoreGrid({ player, players, activeChores, dailyDone, we
   return (
     <div className="chore-sections">
       <div>
-        <div className="section-label">Daily Quests <span className="reset-info">— resets at midnight</span></div>
+        <div className="section-label">
+          <TileSprite tile={118} display={12} />
+          Daily Quests
+          <span className="reset-info">— resets at midnight</span>
+        </div>
         <div className="chores">
           {daily.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
         </div>
       </div>
       {weekly.length > 0 && (
         <div>
-          <div className="section-label">Weekly Quests <span className="reset-info">— resets Sunday</span></div>
+          <div className="section-label">
+            <TileSprite tile={131} display={12} />
+            Weekly Quests
+            <span className="reset-info">— resets Sunday</span>
+          </div>
           <div className="chores">
             {weekly.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
           </div>
@@ -78,7 +91,11 @@ export default function ChoreGrid({ player, players, activeChores, dailyDone, we
       )}
       {monthly.length > 0 && (
         <div>
-          <div className="section-label">Monthly Quests <span className="reset-info">— resets 1st of month</span></div>
+          <div className="section-label">
+            <TileSprite tile={72} display={12} />
+            Monthly Quests
+            <span className="reset-info">— resets 1st of month</span>
+          </div>
           <div className="chores">
             {monthly.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
           </div>
