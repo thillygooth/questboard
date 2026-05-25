@@ -70,41 +70,42 @@ export const ALL_CHORES = [
   { id: 'toybox',      name: 'Sort toy box',      icon: '🪀', pts: 3, who: 'kids',   freq: 'monthly' },
 ];
 
-// Gold economy: avg ~10 gold/day, ~70/week
-// Rewards: quick (1-2 days) | mid (3-5 days) | big (1-2 weeks) | dream (3+ weeks)
+// Gold economy (kids earn ~3/kill tier1, adults ~6/kill tier1)
+// Target: 2-3 kills for cheapest reward in each mode
+// Rewards: quick (2-3 kills) | mid (5-8 kills) | big (2-3 weeks) | dream (1+ month)
 export const REWARDS = [
   // Quick treats
   { id: 'extracandy',   name: 'Candy bag',           icon: '🍬', cost:  8, desc: 'Pick any candy you want',          who: 'kids'   },
   { id: 'screentime',   name: 'Extra screen time',   icon: '📱', cost:  8, desc: '1 hour extra',                     who: 'kids'   },
-  { id: 'dessert',      name: 'Special dessert',     icon: '🎂', cost: 10, desc: 'Fancy treat from the store',       who: 'all'    },
-  { id: 'cocktails',    name: 'Cocktail night',      icon: '🍹', cost: 12, desc: 'Fancy drinks at home',             who: 'adults' },
+  { id: 'cocktails',    name: 'Cocktail night',      icon: '🍹', cost: 15, desc: 'Fancy drinks at home',             who: 'adults' },
+  { id: 'dessert',      name: 'Special dessert',     icon: '🎂', cost: 18, desc: 'Fancy treat from the store',       who: 'all'    },
 
   // Mid rewards
-  { id: 'choosemeal',   name: 'Pick dinner',         icon: '🍜', cost: 12, desc: "You choose what's for dinner",     who: 'all'    },
-  { id: 'bookshop',     name: 'New book',            icon: '📘', cost: 15, desc: 'Pick any book from the store',     who: 'all'    },
-  { id: 'latenight',    name: 'Stay up late',        icon: '⭐', cost: 15, desc: '1 hour past bedtime',              who: 'kids'   },
-  { id: 'cookwithme',   name: 'Cook a recipe',       icon: '👨‍🍳', cost: 20, desc: 'Pick any recipe to make together', who: 'kids'   },
-  { id: 'choosemovie',  name: 'Pick the movie',      icon: '🎬', cost: 20, desc: 'You choose what we watch',         who: 'all'    },
-  { id: 'craft',        name: 'Craft project',       icon: '✂️', cost: 18, desc: 'Pick a craft from the store',      who: 'kids'   },
-  { id: 'icecream',     name: 'Ice cream trip',      icon: '🍦', cost: 20, desc: 'Pick any flavor',                  who: 'all'    },
-  { id: 'nochore',      name: 'No chores today',     icon: '🏖️', cost: 25, desc: 'Full day off from all chores',     who: 'all'    },
-  { id: 'gamenight',    name: 'Family game night',   icon: '🎲', cost: 25, desc: 'Pick the board game',              who: 'all'    },
+  { id: 'latenight',    name: 'Stay up late',        icon: '⭐', cost: 18, desc: '1 hour past bedtime',              who: 'kids'   },
+  { id: 'choosemeal',   name: 'Pick dinner',         icon: '🍜', cost: 20, desc: "You choose what's for dinner",     who: 'all'    },
+  { id: 'bookshop',     name: 'New book',            icon: '📘', cost: 22, desc: 'Pick any book from the store',     who: 'all'    },
+  { id: 'craft',        name: 'Craft project',       icon: '✂️', cost: 24, desc: 'Pick a craft from the store',      who: 'kids'   },
+  { id: 'cookwithme',   name: 'Cook a recipe',       icon: '👨‍🍳', cost: 28, desc: 'Pick any recipe to make together', who: 'kids'   },
+  { id: 'choosemovie',  name: 'Pick the movie',      icon: '🎬', cost: 28, desc: 'You choose what we watch',         who: 'all'    },
+  { id: 'icecream',     name: 'Ice cream trip',      icon: '🍦', cost: 30, desc: 'Pick any flavor',                  who: 'all'    },
+  { id: 'gamenight',    name: 'Family game night',   icon: '🎲', cost: 35, desc: 'Pick the board game',              who: 'all'    },
+  { id: 'nochore',      name: 'No chores today',     icon: '🏖️', cost: 40, desc: 'Full day off from all chores',     who: 'all'    },
 
   // Big rewards
-  { id: 'hike',         name: 'Hike or park day',    icon: '🥾', cost: 30, desc: 'Pick a trail nearby',              who: 'adults' },
-  { id: 'picnic',       name: 'Picnic in the park',  icon: '🧺', cost: 30, desc: 'Pack a picnic together',           who: 'all'    },
-  { id: 'videogameday', name: 'Video game all day',  icon: '🎮', cost: 35, desc: 'No screen time limits today',      who: 'kids'   },
-  { id: 'sleepover',    name: 'Sleepover',           icon: '🌛', cost: 35, desc: 'Friend can sleep over',            who: 'kids'   },
-  { id: 'toyshop',      name: 'Toy shop trip',       icon: '🎪', cost: 50, desc: '$10 toy budget, your pick',        who: 'kids'   },
-  { id: 'movie',        name: 'Movie night',         icon: '🍿', cost: 40, desc: 'Family picks the film + popcorn',  who: 'all'    },
-  { id: 'brunch',       name: 'Fancy brunch',        icon: '🥐', cost: 40, desc: 'Brunch at a nice cafe',            who: 'adults' },
-  { id: 'arcade',       name: 'Arcade or bowling',   icon: '🕹️', cost: 45, desc: 'Fun family outing',               who: 'all'    },
-  { id: 'spa',          name: 'Relaxation day',      icon: '🛁', cost: 45, desc: 'No chores, massage, chill',        who: 'adults' },
+  { id: 'hike',         name: 'Hike or park day',    icon: '🥾', cost: 45, desc: 'Pick a trail nearby',              who: 'adults' },
+  { id: 'picnic',       name: 'Picnic in the park',  icon: '🧺', cost: 45, desc: 'Pack a picnic together',           who: 'all'    },
+  { id: 'videogameday', name: 'Video game all day',  icon: '🎮', cost: 45, desc: 'No screen time limits today',      who: 'kids'   },
+  { id: 'sleepover',    name: 'Sleepover',           icon: '🌛', cost: 45, desc: 'Friend can sleep over',            who: 'kids'   },
+  { id: 'movie',        name: 'Movie night',         icon: '🍿', cost: 55, desc: 'Family picks the film + popcorn',  who: 'all'    },
+  { id: 'brunch',       name: 'Fancy brunch',        icon: '🥐', cost: 55, desc: 'Brunch at a nice cafe',            who: 'adults' },
+  { id: 'spa',          name: 'Relaxation day',      icon: '🛁', cost: 60, desc: 'No chores, massage, chill',        who: 'adults' },
+  { id: 'toyshop',      name: 'Toy shop trip',       icon: '🎪', cost: 65, desc: '$10 toy budget, your pick',        who: 'kids'   },
+  { id: 'arcade',       name: 'Arcade or bowling',   icon: '🕹️', cost: 70, desc: 'Fun family outing',               who: 'all'    },
 
   // Dream rewards
-  { id: 'dinner',       name: 'Dinner out',          icon: '🥂', cost: 65, desc: 'Restaurant of your choice',        who: 'all'    },
-  { id: 'waterpark',    name: 'Water park day',      icon: '🌊', cost:120, desc: 'Full day at the water park',       who: 'all'    },
-  { id: 'camping',      name: 'Camping trip',        icon: '🏕️', cost:160, desc: 'Weekend in the mountains',         who: 'all'    },
+  { id: 'dinner',       name: 'Dinner out',          icon: '🥂', cost: 90, desc: 'Restaurant of your choice',        who: 'all'    },
+  { id: 'waterpark',    name: 'Water park day',      icon: '🌊', cost:160, desc: 'Full day at the water park',       who: 'all'    },
+  { id: 'camping',      name: 'Camping trip',        icon: '🏕️', cost:220, desc: 'Weekend in the mountains',         who: 'all'    },
 ];
 
 // Monster roster
@@ -112,50 +113,50 @@ export const REWARDS = [
 // Tier 1-2: killed in <=40% of dailies; Tier 5: <=70% of dailies
 export const MONSTERS = [
   // Tier 1: ~3-4 chores to defeat
-  { id: 'green_slime',    name: 'Green Slime',      adultHP:  7, kidHP:  4, atk:  2, gold:  6 },
-  { id: 'rat',            name: 'Sewer Rat',         adultHP:  7, kidHP:  4, atk:  2, gold:  6 },
-  { id: 'tiny_spider',    name: 'Tiny Spider',       adultHP:  8, kidHP:  5, atk:  2, gold:  6 },
-  { id: 'forest_imp',     name: 'Forest Imp',        adultHP:  8, kidHP:  5, atk:  2, gold:  7 },
-  { id: 'wisp',           name: 'Wisp',              adultHP:  8, kidHP:  5, atk:  2, gold:  7 },
-  { id: 'evil_shroom',    name: 'Evil Shroom',       adultHP:  9, kidHP:  5, atk:  2, gold:  7 },
+  { id: 'green_slime',    name: 'Green Slime',      adultHP:  7, kidHP:  4, atk:  2, gold:  6, kidGold:  3 },
+  { id: 'rat',            name: 'Sewer Rat',         adultHP:  7, kidHP:  4, atk:  2, gold:  6, kidGold:  3 },
+  { id: 'tiny_spider',    name: 'Tiny Spider',       adultHP:  8, kidHP:  5, atk:  2, gold:  6, kidGold:  3 },
+  { id: 'forest_imp',     name: 'Forest Imp',        adultHP:  8, kidHP:  5, atk:  2, gold:  7, kidGold:  3 },
+  { id: 'wisp',           name: 'Wisp',              adultHP:  8, kidHP:  5, atk:  2, gold:  7, kidGold:  3 },
+  { id: 'evil_shroom',    name: 'Evil Shroom',       adultHP:  9, kidHP:  5, atk:  2, gold:  7, kidGold:  3 },
 
   // Tier 2: ~4-6 chores to defeat
-  { id: 'goblin',         name: 'Goblin',            adultHP: 10, kidHP:  6, atk:  3, gold:  9 },
-  { id: 'night_imp',      name: 'Night Imp',         adultHP: 10, kidHP:  6, atk:  3, gold:  9 },
-  { id: 'plaguebearer',   name: 'Plaguebearer',      adultHP: 11, kidHP:  6, atk:  3, gold: 10 },
-  { id: 'spectral_hound', name: 'Spectral Hound',    adultHP: 11, kidHP:  6, atk:  3, gold: 10 },
-  { id: 'cave_bat',       name: 'Cave Bat',          adultHP: 11, kidHP:  7, atk:  3, gold: 10 },
-  { id: 'shadow_man',     name: 'Shadow Stalker',    adultHP: 12, kidHP:  7, atk:  3, gold: 11 },
-  { id: 'wild_buck',      name: 'Wild Buck',         adultHP: 12, kidHP:  7, atk:  3, gold: 11 },
+  { id: 'goblin',         name: 'Goblin',            adultHP: 10, kidHP:  6, atk:  3, gold:  9, kidGold:  4 },
+  { id: 'night_imp',      name: 'Night Imp',         adultHP: 10, kidHP:  6, atk:  3, gold:  9, kidGold:  4 },
+  { id: 'plaguebearer',   name: 'Plaguebearer',      adultHP: 11, kidHP:  6, atk:  3, gold: 10, kidGold:  5 },
+  { id: 'spectral_hound', name: 'Spectral Hound',    adultHP: 11, kidHP:  6, atk:  3, gold: 10, kidGold:  5 },
+  { id: 'cave_bat',       name: 'Cave Bat',          adultHP: 11, kidHP:  7, atk:  3, gold: 10, kidGold:  5 },
+  { id: 'shadow_man',     name: 'Shadow Stalker',    adultHP: 12, kidHP:  7, atk:  3, gold: 11, kidGold:  5 },
+  { id: 'wild_buck',      name: 'Wild Buck',         adultHP: 12, kidHP:  7, atk:  3, gold: 11, kidGold:  5 },
 
   // Tier 3: ~5-7 chores to defeat
-  { id: 'skeleton',       name: 'Skeleton',          adultHP: 13, kidHP:  8, atk:  4, gold: 12 },
-  { id: 'chaos_imp',      name: 'Chaos Imp',         adultHP: 13, kidHP:  8, atk:  4, gold: 13 },
-  { id: 'large_snake',    name: 'Giant Serpent',     adultHP: 14, kidHP:  8, atk:  4, gold: 13 },
-  { id: 'reaper',         name: 'Grim Reaper',       adultHP: 14, kidHP:  9, atk:  4, gold: 14 },
-  { id: 'frost_yetling',  name: 'Frost Yeti',        adultHP: 14, kidHP:  9, atk:  4, gold: 14 },
-  { id: 'void_devil',     name: 'Void Devil',        adultHP: 15, kidHP:  9, atk:  5, gold: 15 },
-  { id: 'toxic_slime',    name: 'Toxic Slime',       adultHP: 13, kidHP:  8, atk:  4, gold: 13 },
-  { id: 'mimic',          name: 'Mimic',             adultHP: 15, kidHP:  9, atk:  5, gold: 15 },
-  { id: 'cyber_drone',    name: 'Cyber Drone',       adultHP: 14, kidHP:  8, atk:  4, gold: 14 },
+  { id: 'skeleton',       name: 'Skeleton',          adultHP: 13, kidHP:  8, atk:  4, gold: 12, kidGold:  6 },
+  { id: 'chaos_imp',      name: 'Chaos Imp',         adultHP: 13, kidHP:  8, atk:  4, gold: 13, kidGold:  6 },
+  { id: 'large_snake',    name: 'Giant Serpent',     adultHP: 14, kidHP:  8, atk:  4, gold: 13, kidGold:  6 },
+  { id: 'reaper',         name: 'Grim Reaper',       adultHP: 14, kidHP:  9, atk:  4, gold: 14, kidGold:  6 },
+  { id: 'frost_yetling',  name: 'Frost Yeti',        adultHP: 14, kidHP:  9, atk:  4, gold: 14, kidGold:  6 },
+  { id: 'void_devil',     name: 'Void Devil',        adultHP: 15, kidHP:  9, atk:  5, gold: 15, kidGold:  7 },
+  { id: 'toxic_slime',    name: 'Toxic Slime',       adultHP: 13, kidHP:  8, atk:  4, gold: 13, kidGold:  6 },
+  { id: 'mimic',          name: 'Mimic',             adultHP: 15, kidHP:  9, atk:  5, gold: 15, kidGold:  7 },
+  { id: 'cyber_drone',    name: 'Cyber Drone',       adultHP: 14, kidHP:  8, atk:  4, gold: 14, kidGold:  6 },
 
   // Tier 4: ~6-8 chores to defeat
-  { id: 'skeleton_warrior',name: 'Skeleton Warrior', adultHP: 17, kidHP: 10, atk:  5, gold: 17 },
-  { id: 'molten_golem',   name: 'Molten Golem',      adultHP: 17, kidHP: 10, atk:  5, gold: 18 },
-  { id: 'mirrorfiend',    name: 'Mirrorfiend',       adultHP: 18, kidHP: 10, atk:  5, gold: 18 },
-  { id: 'fire_elemental', name: 'Fire Elemental',    adultHP: 18, kidHP: 11, atk:  5, gold: 19 },
-  { id: 'phantom_minotaur',name: 'Phantom Minotaur', adultHP: 19, kidHP: 11, atk:  6, gold: 20 },
-  { id: 'rock_golem',     name: 'Rock Golem',        adultHP: 18, kidHP: 10, atk:  5, gold: 19 },
-  { id: 'cyber_walker',   name: 'Cyber Walker',      adultHP: 19, kidHP: 11, atk:  6, gold: 20 },
+  { id: 'skeleton_warrior',name: 'Skeleton Warrior', adultHP: 17, kidHP: 10, atk:  5, gold: 17, kidGold:  8 },
+  { id: 'molten_golem',   name: 'Molten Golem',      adultHP: 17, kidHP: 10, atk:  5, gold: 18, kidGold:  8 },
+  { id: 'mirrorfiend',    name: 'Mirrorfiend',       adultHP: 18, kidHP: 10, atk:  5, gold: 18, kidGold:  8 },
+  { id: 'fire_elemental', name: 'Fire Elemental',    adultHP: 18, kidHP: 11, atk:  5, gold: 19, kidGold:  9 },
+  { id: 'phantom_minotaur',name: 'Phantom Minotaur', adultHP: 19, kidHP: 11, atk:  6, gold: 20, kidGold:  9 },
+  { id: 'rock_golem',     name: 'Rock Golem',        adultHP: 18, kidHP: 10, atk:  5, gold: 19, kidGold:  9 },
+  { id: 'cyber_walker',   name: 'Cyber Walker',      adultHP: 19, kidHP: 11, atk:  6, gold: 20, kidGold:  9 },
 
   // Tier 5: boss monsters, needs a strong day (~8-10 chores)
-  { id: 'frost_golem',    name: 'Frost Golem',       adultHP: 21, kidHP: 12, atk:  6, gold: 24 },
-  { id: 'giant_spider',   name: 'Giant Spider',      adultHP: 22, kidHP: 13, atk:  7, gold: 28 },
-  { id: 'cave_troll',     name: 'Cave Troll',        adultHP: 22, kidHP: 13, atk:  7, gold: 28 },
-  { id: 'sandworm',       name: 'Sandworm',          adultHP: 24, kidHP: 14, atk:  7, gold: 32 },
-  { id: 'jrpg_ogre',      name: 'Ogre Chieftain',    adultHP: 24, kidHP: 14, atk:  7, gold: 32 },
-  { id: 'happy_blob',     name: 'Elder Blob',        adultHP: 20, kidHP: 12, atk:  6, gold: 26 },
-  { id: 'volcano_drake',  name: 'Volcano Drake',     adultHP: 28, kidHP: 16, atk:  8, gold: 38 },
+  { id: 'frost_golem',    name: 'Frost Golem',       adultHP: 21, kidHP: 12, atk:  6, gold: 24, kidGold: 11 },
+  { id: 'giant_spider',   name: 'Giant Spider',      adultHP: 22, kidHP: 13, atk:  7, gold: 28, kidGold: 13 },
+  { id: 'cave_troll',     name: 'Cave Troll',        adultHP: 22, kidHP: 13, atk:  7, gold: 28, kidGold: 13 },
+  { id: 'sandworm',       name: 'Sandworm',          adultHP: 24, kidHP: 14, atk:  7, gold: 32, kidGold: 14 },
+  { id: 'jrpg_ogre',      name: 'Ogre Chieftain',    adultHP: 24, kidHP: 14, atk:  7, gold: 32, kidGold: 14 },
+  { id: 'happy_blob',     name: 'Elder Blob',        adultHP: 20, kidHP: 12, atk:  6, gold: 26, kidGold: 12 },
+  { id: 'volcano_drake',  name: 'Volcano Drake',     adultHP: 28, kidHP: 16, atk:  8, gold: 38, kidGold: 17 },
 ];
 
 export const LOOT_TABLE = [

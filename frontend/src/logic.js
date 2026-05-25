@@ -24,13 +24,15 @@ export function todayDow() {
 // player is a full player object with .id and .mode ('kids' | 'adults')
 export function randomMonster(player) {
   const m = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
-  return { ...m, maxHP: player.mode === 'kids' ? m.kidHP : m.adultHP };
+  const isKid = player.mode === 'kids';
+  return { ...m, maxHP: isKid ? m.kidHP : m.adultHP, gold: isKid ? m.kidGold : m.gold };
 }
 
 export function dateSeededMonster(player, dateKey) {
   const hash = `${player.id}${dateKey}`.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const m = MONSTERS[hash % MONSTERS.length];
-  return { ...m, maxHP: player.mode === 'kids' ? m.kidHP : m.adultHP };
+  const isKid = player.mode === 'kids';
+  return { ...m, maxHP: isKid ? m.kidHP : m.adultHP, gold: isKid ? m.kidGold : m.gold };
 }
 
 // chores: the active chore list (already filtered by enabledChores + customChores)

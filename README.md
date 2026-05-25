@@ -8,6 +8,7 @@ Each family member gets a hero and faces a daily monster. Complete chores to dea
 
 [![Release](https://img.shields.io/github/v/release/thillygooth/questboard)](https://github.com/thillygooth/questboard/releases)
 [![License](https://img.shields.io/github/license/thillygooth/questboard)](LICENSE)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/thillygooth)
 
 ---
 
