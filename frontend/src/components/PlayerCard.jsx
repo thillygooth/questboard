@@ -70,7 +70,7 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
   const totalDmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
   const baseline = (monsterBaseline?.[player.id]?.[tKey]) || 0;
   const dmg = totalDmg - baseline;
-  const hp = Math.max(0, m.maxHP - dmg);
+  const hp = Math.max(0, Math.min(m.maxHP, m.maxHP - dmg));
   const dead = hp === 0;
   const pct = Math.round((hp / m.maxHP) * 100);
   const low = pct < 30;

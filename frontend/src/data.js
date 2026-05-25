@@ -110,54 +110,54 @@ export const REWARDS = [
 
 // Monster roster
 // adults avg ~2.5 pts/chore, kids avg ~2 pts/chore
-// Tier 1: 4-5 chores to defeat; Tier 5: 9-12 chores to defeat
+// All tiers: 3-5 chores max (adult HP cap 12, kid HP cap 10)
 // Gold: 2-3 tier-1 kills for cheapest reward (adults 15g, kids 8g)
 export const MONSTERS = [
-  // Tier 1: ~4-5 chores to defeat
-  { id: 'green_slime',    name: 'Green Slime',      adultHP: 11, kidHP:  8, atk:  2, gold:  5, kidGold:  3 },
-  { id: 'rat',            name: 'Sewer Rat',         adultHP: 11, kidHP:  8, atk:  2, gold:  5, kidGold:  3 },
-  { id: 'tiny_spider',    name: 'Tiny Spider',       adultHP: 11, kidHP:  8, atk:  2, gold:  5, kidGold:  3 },
-  { id: 'forest_imp',     name: 'Forest Imp',        adultHP: 12, kidHP:  9, atk:  2, gold:  6, kidGold:  3 },
-  { id: 'wisp',           name: 'Wisp',              adultHP: 12, kidHP:  9, atk:  2, gold:  6, kidGold:  3 },
-  { id: 'evil_shroom',    name: 'Evil Shroom',       adultHP: 12, kidHP:  9, atk:  2, gold:  6, kidGold:  3 },
+  // Tier 1: ~3 chores to defeat
+  { id: 'green_slime',    name: 'Green Slime',      adultHP:  7, kidHP:  5, atk:  2, gold:  5, kidGold:  3 },
+  { id: 'rat',            name: 'Sewer Rat',         adultHP:  7, kidHP:  5, atk:  2, gold:  5, kidGold:  3 },
+  { id: 'tiny_spider',    name: 'Tiny Spider',       adultHP:  8, kidHP:  5, atk:  2, gold:  5, kidGold:  3 },
+  { id: 'forest_imp',     name: 'Forest Imp',        adultHP:  8, kidHP:  5, atk:  2, gold:  6, kidGold:  3 },
+  { id: 'wisp',           name: 'Wisp',              adultHP:  8, kidHP:  5, atk:  2, gold:  6, kidGold:  3 },
+  { id: 'evil_shroom',    name: 'Evil Shroom',       adultHP:  8, kidHP:  5, atk:  2, gold:  6, kidGold:  3 },
 
-  // Tier 2: ~5-7 chores to defeat
-  { id: 'goblin',         name: 'Goblin',            adultHP: 14, kidHP: 11, atk:  3, gold:  7, kidGold:  4 },
-  { id: 'night_imp',      name: 'Night Imp',         adultHP: 14, kidHP: 11, atk:  3, gold:  7, kidGold:  4 },
-  { id: 'plaguebearer',   name: 'Plaguebearer',      adultHP: 15, kidHP: 11, atk:  3, gold:  8, kidGold:  4 },
-  { id: 'spectral_hound', name: 'Spectral Hound',    adultHP: 15, kidHP: 11, atk:  3, gold:  8, kidGold:  4 },
-  { id: 'cave_bat',       name: 'Cave Bat',          adultHP: 15, kidHP: 12, atk:  3, gold:  8, kidGold:  4 },
-  { id: 'shadow_man',     name: 'Shadow Stalker',    adultHP: 16, kidHP: 12, atk:  3, gold:  8, kidGold:  4 },
-  { id: 'wild_buck',      name: 'Wild Buck',         adultHP: 16, kidHP: 12, atk:  3, gold:  8, kidGold:  4 },
+  // Tier 2: ~3-4 chores to defeat
+  { id: 'goblin',         name: 'Goblin',            adultHP:  9, kidHP:  6, atk:  3, gold:  7, kidGold:  4 },
+  { id: 'night_imp',      name: 'Night Imp',         adultHP:  9, kidHP:  6, atk:  3, gold:  7, kidGold:  4 },
+  { id: 'plaguebearer',   name: 'Plaguebearer',      adultHP:  9, kidHP:  6, atk:  3, gold:  8, kidGold:  4 },
+  { id: 'spectral_hound', name: 'Spectral Hound',    adultHP:  9, kidHP:  6, atk:  3, gold:  8, kidGold:  4 },
+  { id: 'cave_bat',       name: 'Cave Bat',          adultHP: 10, kidHP:  7, atk:  3, gold:  8, kidGold:  4 },
+  { id: 'shadow_man',     name: 'Shadow Stalker',    adultHP: 10, kidHP:  7, atk:  3, gold:  8, kidGold:  4 },
+  { id: 'wild_buck',      name: 'Wild Buck',         adultHP: 10, kidHP:  7, atk:  3, gold:  8, kidGold:  4 },
 
-  // Tier 3: ~6-8 chores to defeat
-  { id: 'skeleton',       name: 'Skeleton',          adultHP: 18, kidHP: 14, atk:  4, gold:  9, kidGold:  5 },
-  { id: 'chaos_imp',      name: 'Chaos Imp',         adultHP: 18, kidHP: 14, atk:  4, gold:  9, kidGold:  5 },
-  { id: 'large_snake',    name: 'Giant Serpent',     adultHP: 19, kidHP: 14, atk:  4, gold: 10, kidGold:  5 },
-  { id: 'reaper',         name: 'Grim Reaper',       adultHP: 19, kidHP: 15, atk:  4, gold: 10, kidGold:  5 },
-  { id: 'frost_yetling',  name: 'Frost Yeti',        adultHP: 19, kidHP: 15, atk:  4, gold: 10, kidGold:  5 },
-  { id: 'void_devil',     name: 'Void Devil',        adultHP: 20, kidHP: 15, atk:  5, gold: 11, kidGold:  5 },
-  { id: 'toxic_slime',    name: 'Toxic Slime',       adultHP: 18, kidHP: 14, atk:  4, gold:  9, kidGold:  5 },
-  { id: 'mimic',          name: 'Mimic',             adultHP: 20, kidHP: 15, atk:  5, gold: 11, kidGold:  5 },
-  { id: 'cyber_drone',    name: 'Cyber Drone',       adultHP: 19, kidHP: 14, atk:  4, gold: 10, kidGold:  5 },
+  // Tier 3: ~4 chores to defeat
+  { id: 'skeleton',       name: 'Skeleton',          adultHP: 10, kidHP:  7, atk:  4, gold:  9, kidGold:  5 },
+  { id: 'chaos_imp',      name: 'Chaos Imp',         adultHP: 10, kidHP:  7, atk:  4, gold:  9, kidGold:  5 },
+  { id: 'large_snake',    name: 'Giant Serpent',     adultHP: 10, kidHP:  8, atk:  4, gold: 10, kidGold:  5 },
+  { id: 'reaper',         name: 'Grim Reaper',       adultHP: 11, kidHP:  8, atk:  4, gold: 10, kidGold:  5 },
+  { id: 'frost_yetling',  name: 'Frost Yeti',        adultHP: 11, kidHP:  8, atk:  4, gold: 10, kidGold:  5 },
+  { id: 'void_devil',     name: 'Void Devil',        adultHP: 11, kidHP:  8, atk:  5, gold: 11, kidGold:  5 },
+  { id: 'toxic_slime',    name: 'Toxic Slime',       adultHP: 10, kidHP:  7, atk:  4, gold:  9, kidGold:  5 },
+  { id: 'mimic',          name: 'Mimic',             adultHP: 11, kidHP:  8, atk:  5, gold: 11, kidGold:  5 },
+  { id: 'cyber_drone',    name: 'Cyber Drone',       adultHP: 10, kidHP:  7, atk:  4, gold: 10, kidGold:  5 },
 
-  // Tier 4: ~7-9 chores to defeat
-  { id: 'skeleton_warrior',name: 'Skeleton Warrior', adultHP: 22, kidHP: 17, atk:  5, gold: 12, kidGold:  6 },
-  { id: 'molten_golem',   name: 'Molten Golem',      adultHP: 22, kidHP: 17, atk:  5, gold: 12, kidGold:  6 },
-  { id: 'mirrorfiend',    name: 'Mirrorfiend',       adultHP: 23, kidHP: 17, atk:  5, gold: 13, kidGold:  6 },
-  { id: 'fire_elemental', name: 'Fire Elemental',    adultHP: 23, kidHP: 18, atk:  5, gold: 13, kidGold:  7 },
-  { id: 'phantom_minotaur',name: 'Phantom Minotaur', adultHP: 25, kidHP: 18, atk:  6, gold: 14, kidGold:  7 },
-  { id: 'rock_golem',     name: 'Rock Golem',        adultHP: 23, kidHP: 17, atk:  5, gold: 13, kidGold:  6 },
-  { id: 'cyber_walker',   name: 'Cyber Walker',      adultHP: 25, kidHP: 18, atk:  6, gold: 14, kidGold:  7 },
+  // Tier 4: ~4-5 chores to defeat
+  { id: 'skeleton_warrior',name: 'Skeleton Warrior', adultHP: 11, kidHP:  8, atk:  5, gold: 12, kidGold:  6 },
+  { id: 'molten_golem',   name: 'Molten Golem',      adultHP: 11, kidHP:  8, atk:  5, gold: 12, kidGold:  6 },
+  { id: 'mirrorfiend',    name: 'Mirrorfiend',       adultHP: 11, kidHP:  9, atk:  5, gold: 13, kidGold:  6 },
+  { id: 'fire_elemental', name: 'Fire Elemental',    adultHP: 12, kidHP:  9, atk:  5, gold: 13, kidGold:  7 },
+  { id: 'phantom_minotaur',name: 'Phantom Minotaur', adultHP: 12, kidHP:  9, atk:  6, gold: 14, kidGold:  7 },
+  { id: 'rock_golem',     name: 'Rock Golem',        adultHP: 11, kidHP:  8, atk:  5, gold: 13, kidGold:  6 },
+  { id: 'cyber_walker',   name: 'Cyber Walker',      adultHP: 12, kidHP:  9, atk:  6, gold: 14, kidGold:  7 },
 
-  // Tier 5: boss monsters, needs a strong day (~9-12 chores)
-  { id: 'frost_golem',    name: 'Frost Golem',       adultHP: 28, kidHP: 21, atk:  6, gold: 16, kidGold:  8 },
-  { id: 'giant_spider',   name: 'Giant Spider',      adultHP: 30, kidHP: 22, atk:  7, gold: 18, kidGold:  9 },
-  { id: 'cave_troll',     name: 'Cave Troll',        adultHP: 30, kidHP: 22, atk:  7, gold: 18, kidGold:  9 },
-  { id: 'sandworm',       name: 'Sandworm',          adultHP: 32, kidHP: 23, atk:  7, gold: 20, kidGold: 10 },
-  { id: 'jrpg_ogre',      name: 'Ogre Chieftain',    adultHP: 32, kidHP: 23, atk:  7, gold: 20, kidGold: 10 },
-  { id: 'happy_blob',     name: 'Elder Blob',        adultHP: 28, kidHP: 21, atk:  6, gold: 16, kidGold:  8 },
-  { id: 'volcano_drake',  name: 'Volcano Drake',     adultHP: 36, kidHP: 26, atk:  8, gold: 24, kidGold: 12 },
+  // Tier 5: boss monsters, ~5 chores to defeat
+  { id: 'frost_golem',    name: 'Frost Golem',       adultHP: 12, kidHP:  9, atk:  6, gold: 16, kidGold:  8 },
+  { id: 'giant_spider',   name: 'Giant Spider',      adultHP: 12, kidHP: 10, atk:  7, gold: 18, kidGold:  9 },
+  { id: 'cave_troll',     name: 'Cave Troll',        adultHP: 12, kidHP: 10, atk:  7, gold: 18, kidGold:  9 },
+  { id: 'sandworm',       name: 'Sandworm',          adultHP: 12, kidHP: 10, atk:  7, gold: 20, kidGold: 10 },
+  { id: 'jrpg_ogre',      name: 'Ogre Chieftain',    adultHP: 12, kidHP: 10, atk:  7, gold: 20, kidGold: 10 },
+  { id: 'happy_blob',     name: 'Elder Blob',        adultHP: 12, kidHP:  9, atk:  6, gold: 16, kidGold:  8 },
+  { id: 'volcano_drake',  name: 'Volcano Drake',     adultHP: 12, kidHP: 10, atk:  8, gold: 24, kidGold: 12 },
 ];
 
 export const LOOT_TABLE = [
