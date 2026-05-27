@@ -88,7 +88,7 @@ body.crt::after {
 .torch-wrap {
   position: fixed;
   top: 12px;
-  z-index: 5;
+  z-index: 0;
   pointer-events: none;
   display: flex;
   flex-direction: column;
@@ -1065,16 +1065,16 @@ body.crt::after {
 .dmap-tab-layout {
   display: flex;
   gap: 32px;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 20px 0;
   min-height: 360px;
+  width: 100%;
 }
 
 .dmap-sidebar {
-  min-width: 140px;
-  max-width: 180px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 120px;
 }
 
 .dmap-sidebar-title {
@@ -1169,6 +1169,31 @@ body.crt::after {
   line-height: 1.4;
 }
 
+.dmap-warning-gold {
+  font-family: var(--pixel);
+  font-size: 7px;
+  color: var(--gold2);
+  margin-top: 3px;
+}
+
+.dmap-monster-hp-bg {
+  width: 86%;
+  height: 7px;
+  background: #1a0a0a;
+  border-radius: 2px;
+  margin: 5px auto 3px;
+  border: 1px solid rgba(180,30,30,0.5);
+  overflow: hidden;
+}
+
+.dmap-monster-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8a1010, #d03030);
+  border-radius: 2px;
+  transition: width 0.35s ease;
+  min-width: 2px;
+}
+
 .dmap-no-moves {
   margin-top: 16px;
   text-align: center;
@@ -1243,8 +1268,11 @@ body.crt::after {
 }
 
 .dmap-btn {
-  background: rgba(20,14,36,0.95);
-  border: 1px solid rgba(140,100,30,0.5);
+  background: linear-gradient(180deg, rgba(28,18,50,0.97) 0%, rgba(14,9,28,0.97) 100%);
+  border: 1px solid rgba(140,100,30,0.6);
+  box-shadow:
+    inset 0  1px 0 rgba(255,255,255,0.07),
+    inset 0 -2px 0 rgba(0,0,0,0.45);
   color: var(--gold);
   font-size: 13px;
   font-family: var(--pixel);
@@ -1254,24 +1282,40 @@ body.crt::after {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background 0.1s, border-color 0.1s, color 0.1s, box-shadow 0.1s;
+  transition: background 0.1s, border-color 0.1s, color 0.1s, box-shadow 0.1s, transform 0.08s;
   padding: 0;
+  user-select: none;
 }
 
 .dmap-btn:hover:not(:disabled) {
-  background: rgba(50,30,90,0.95);
+  background: linear-gradient(180deg, rgba(58,32,100,0.97) 0%, rgba(34,18,62,0.97) 100%);
   border-color: var(--gold-border);
   color: var(--gold2);
-  box-shadow: 0 0 8px rgba(200,149,42,0.25);
+  box-shadow:
+    0 0 10px rgba(200,149,42,0.28),
+    inset 0  1px 0 rgba(255,255,255,0.10),
+    inset 0 -2px 0 rgba(0,0,0,0.45);
 }
 
 .dmap-btn:active:not(:disabled) {
-  transform: scale(0.92);
+  transform: translateY(2px) scale(0.94);
+  box-shadow:
+    inset 0  2px 0 rgba(0,0,0,0.45),
+    inset 0 -1px 0 rgba(255,255,255,0.04);
 }
 
 .dmap-btn:disabled {
-  opacity: 0.2;
+  opacity: 0.18;
   cursor: not-allowed;
+}
+
+@keyframes torch-flicker {
+  0%, 100% { opacity: 1;    }
+  15%       { opacity: 0.94; }
+  30%       { opacity: 0.98; }
+  50%       { opacity: 0.91; }
+  65%       { opacity: 0.96; }
+  80%       { opacity: 0.93; }
 }
 
 .dmap-moves-badge {

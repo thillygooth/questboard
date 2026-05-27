@@ -1,5 +1,7 @@
 # Stage 1: Build React frontend
-FROM node:20-alpine AS frontend-builder
+# Use the host's native platform so npm ci/build run without QEMU emulation.
+# The output (dist/) is pure JS/CSS/HTML — architecture-independent.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --prefer-offline

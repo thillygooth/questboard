@@ -11,7 +11,7 @@ import DungeonMap from './components/DungeonMap';
 import TileSprite from './components/TileSprite';
 import Celebration from './components/Celebration';
 import SetupWizard from './components/SetupWizard';
-import { playHit, playKill, playFanfare, playUndo, playRedeem, playCrit } from './sounds';
+import { playHit, playKill, playFanfare, playUndo, playRedeem, playCrit, playKeyPickup } from './sounds';
 
 const API = '/api';
 
@@ -333,16 +333,34 @@ export default function App() {
     const lootGold = loot?.gold ?? 0;
     const lootXp   = loot?.xp   ?? 0;
 
-    // Dungeon map: kill active mini-monster or grant 1 pending move
+    // Dungeon map: multi-chore combat against dungeon monsters, or grant moves
     const dungeonMap = serverState.dungeonMaps?.[selected];
     let dungeonGoldBonus = 0;
     let dungeonKillName = '';
+    let dungeonFightMsg = '';
     let newDungeonMaps = serverState.dungeonMaps ?? {};
     if (dungeonMap) {
-      if (dungeonMap.activeMonster) {
-        dungeonGoldBonus = dungeonMap.activeMonster.gold;
+      if (dungeonMap.activeMonster && (dungeonMap.activeMonster.currentHP ?? 0) > 0) {
+        // Multi-hit dungeon combat: deal chore pts as damage
+        const dm = dungeonMap.activeMonster;
+        const newMonsterHP = Math.max(0, dm.currentHP - actualPts);
+        if (newMonsterHP === 0) {
+          // Dungeon monster defeated!
+          dungeonGoldBonus = dm.gold;
+          dungeonKillName = dm.name;
+          // Mark tile as cleared in grid
+          const newGrid = dungeonMap.grid.map(row => [...row]);
+          if (dm.pos) newGrid[dm.pos[1]][dm.pos[0]] = 'floor';
+          newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, grid: newGrid, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 3 } };
+        } else {
+          // Still fighting — 1 move for engaging in combat
+          dungeonFightMsg = `⚔ ${dm.name} HP:${newMonsterHP}/${dm.maxHP}`;
+          newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: { ...dm, currentHP: newMonsterHP }, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
+        }
+      } else if (dungeonMap.activeMonster) {
+        // Old-style monster (no currentHP field) — instant clear for migration
+        dungeonGoldBonus = dungeonMap.activeMonster.gold ?? 0;
         dungeonKillName = dungeonMap.activeMonster.name;
-        // Killing a dungeon monster: +3 moves (2 base + 1 kill bonus)
         newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 3 } };
       } else {
         // Regular chore: +2 moves
@@ -426,7 +444,7 @@ export default function App() {
     const streakTag = justKilled && currentStreak >= 3 ? ` ${currentStreak}-day streak x${sMultiplier}!` : '';
     const lootTag   = loot                 ? ` ${loot.icon} Found ${loot.name}!`            : '';
     const badgeTag  = newBadgeIds.length   ? ` 🏅 ${BADGES.find(b => b.id === newBadgeIds[0])?.name}!` : '';
-    const dungeonTag = dungeonGoldBonus > 0 ? ` [☠${dungeonKillName} +${dungeonGoldBonus}g]` : '';
+    const dungeonTag = dungeonGoldBonus > 0 ? ` [☠ ${dungeonKillName} +${dungeonGoldBonus}g]` : dungeonFightMsg ? ` [${dungeonFightMsg}]` : '';
 
     const msg = justKilled
       ? `${player.name} slew ${m.name}!${critTag} +${totalGoldGain}g${streakTag}${luckyTag}${lootTag}${levelTag}${badgeTag}${dungeonTag}`
@@ -553,6 +571,7 @@ export default function App() {
       const goldTag = event.gold ? (goldDelta >= 0 ? ` +${event.gold}g` : ` -${event.gold}g`) : '';
       const prefix = event.kind === 'stairs_down' ? '⬇ ' : event.kind === 'stairs_up' ? '⬆ ' : event.kind === 'key' ? '◇ ' : event.kind === 'locked_chest' ? '🔓 ' : '';
       showToast(`${prefix}${player.name}: ${event.label}${goldTag}`);
+      if (event.kind === 'key') playKeyPickup();
     }
     await updateState(newState);
   }, [serverState, players, updateState, showToast]);
@@ -758,7 +777,7 @@ export default function App() {
                 allPlayers={players}
                 allDungeonMaps={state.dungeonMaps}
                 onMove={(dx, dy) => handleDungeonMove(selected, dx, dy)}
-                cellSize={32}
+                cellSize={44}
               />
             : <div className="no-select">Select a hero above to explore the dungeon.</div>
         )}

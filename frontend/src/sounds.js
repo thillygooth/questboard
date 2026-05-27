@@ -59,3 +59,9 @@ export function playCrit() {
     setTimeout(() => beep(f, i === 4 ? 0.3 : 0.1, 'square', 0.15), i * 50)
   );
 }
+
+// Bright double-ding when a dungeon key is picked up.
+export function playKeyPickup() {
+  beep(1320, 0.14, 'sine', 0.18);
+  setTimeout(() => beep(1760, 0.20, 'sine', 0.15), 120);
+}
