@@ -2,74 +2,121 @@ import { MONSTERS, REWARDS, LOOT_TABLE, TITLES } from './data';
 
 // ── Dungeon map ────────────────────────────────────────────────────────────────
 
-export const FLOOR_RADIUS = 6; // Chebyshev — floor is 13×13 = 169 tiles
+export const GRID_W = 34;
+export const GRID_H = 22;
 
-function roomHash(dayKey, floor, x, y) {
-  return `${dayKey}_f${floor}_${x},${y}`.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0) >>> 0;
+function seededRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
 }
 
-// Candidate positions for special tiles: distance 2–5 from center, spread across quadrants
-const SPECIAL_CANDIDATES = [
-  [2,2],[2,-2],[-2,2],[-2,-2],
-  [3,1],[3,-1],[-3,1],[-3,-1],[1,3],[1,-3],[-1,3],[-1,-3],
-  [4,2],[4,-2],[-4,2],[-4,-2],[2,4],[2,-4],[-2,4],[-2,-4],
-  [5,1],[5,-1],[-5,1],[-5,-1],[1,5],[1,-5],[-1,5],[-1,-5],
-  [4,4],[4,-4],[-4,4],[-4,-4],[5,3],[5,-3],[-5,3],[-5,-3],
-];
+// BSP dungeon generator — returns { grid, startPos, stairsUpPos, stairsDownPos, keyPos, chestPos }
+export function generateFloor(dayKey, floor) {
+  const seed = `${dayKey}_f${floor}`.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0) >>> 0;
+  const rng = seededRng(seed);
 
-// Deterministic positions for key, locked chest, stairs-down, and stairs-up (each unique on floor)
-export function floorSpecialPositions(dayKey, floor) {
-  const seeds = [
-    roomHash(dayKey, floor, 0, 777),
-    roomHash(dayKey, floor, 777, 0),
-    roomHash(dayKey, floor, 0, 888),
-    roomHash(dayKey, floor, 888, 0),
-  ];
-  const taken = new Set();
-  const pick = (h) => {
-    let i = h % SPECIAL_CANDIDATES.length;
-    while (taken.has(i)) i = (i + 1) % SPECIAL_CANDIDATES.length;
-    taken.add(i);
-    return SPECIAL_CANDIDATES[i];
-  };
+  const grid = Array.from({ length: GRID_H }, () => Array(GRID_W).fill('wall'));
+  const rooms = [];
+
+  const carve = (gx, gy) => { if (gx > 0 && gx < GRID_W-1 && gy > 0 && gy < GRID_H-1) grid[gy][gx] = 'floor'; };
+
+  function placeRoom(x, y, w, h) {
+    const r = { x, y, w, h, cx: x + Math.floor(w/2), cy: y + Math.floor(h/2) };
+    for (let gy = y; gy < y+h; gy++) for (let gx = x; gx < x+w; gx++) carve(gx, gy);
+    rooms.push(r); return r;
+  }
+
+  function corridor(x1, y1, x2, y2) {
+    if (rng() < 0.5) {
+      for (let x = Math.min(x1,x2); x <= Math.max(x1,x2); x++) carve(x, y1);
+      for (let y = Math.min(y1,y2); y <= Math.max(y1,y2); y++) carve(x2, y);
+    } else {
+      for (let y = Math.min(y1,y2); y <= Math.max(y1,y2); y++) carve(x1, y);
+      for (let x = Math.min(x1,x2); x <= Math.max(x1,x2); x++) carve(x, y2);
+    }
+  }
+
+  function bsp(x1, y1, x2, y2, depth) {
+    const w = x2-x1, h = y2-y1, MIN = 10;
+    if (depth === 0 || (w < MIN && h < MIN)) {
+      const rw = Math.max(4, Math.floor(rng() * Math.max(1, Math.min(w-3, 9))) + 4);
+      const rh = Math.max(3, Math.floor(rng() * Math.max(1, Math.min(h-3, 7))) + 3);
+      const rx = x1+1 + Math.floor(rng() * Math.max(1, w-rw-2));
+      const ry = y1+1 + Math.floor(rng() * Math.max(1, h-rh-2));
+      return placeRoom(Math.max(1, Math.min(rx, GRID_W-rw-2)), Math.max(1, Math.min(ry, GRID_H-rh-2)), rw, rh);
+    }
+    let c1, c2;
+    if (w >= h && w >= MIN*2) {
+      const split = x1 + MIN + Math.floor(rng() * (w - MIN*2));
+      c1 = bsp(x1, y1, split, y2, depth-1); c2 = bsp(split, y1, x2, y2, depth-1);
+    } else if (h >= MIN*2) {
+      const split = y1 + MIN + Math.floor(rng() * (h - MIN*2));
+      c1 = bsp(x1, y1, x2, split, depth-1); c2 = bsp(x1, split, x2, y2, depth-1);
+    } else {
+      return placeRoom(Math.max(1,x1+1), Math.max(1,y1+1), Math.min(w-2,8), Math.min(h-2,6));
+    }
+    corridor(c1.cx, c1.cy, c2.cx, c2.cy);
+    return c1;
+  }
+
+  bsp(0, 0, GRID_W, GRID_H, 3);
+  if (rooms.length < 2) { placeRoom(2,2,8,6); placeRoom(22,13,8,6); corridor(6,5,26,16); }
+
+  // Scatter gold/traps/monsters on random floor tiles
+  const floorCells = [];
+  for (let gy = 0; gy < GRID_H; gy++)
+    for (let gx = 0; gx < GRID_W; gx++)
+      if (grid[gy][gx] === 'floor') floorCells.push([gx, gy]);
+
+  const extras = 8 + Math.floor(rng() * 6);
+  for (let i = 0; i < extras && floorCells.length; i++) {
+    const idx = Math.floor(rng() * floorCells.length);
+    const [gx, gy] = floorCells.splice(idx, 1)[0];
+    const r = rng();
+    grid[gy][gx] = r < 0.28 ? 'gold_s' : r < 0.50 ? 'gold_l' : r < 0.64 ? 'chest' : r < 0.78 ? 'trap' : 'monster';
+  }
+
+  // Place special tiles in distinct rooms
+  const n = rooms.length;
+  const startRoom      = rooms[0];
+  const stairsUpRoom   = rooms[Math.min(1, n-1)];
+  const keyRoom        = rooms[Math.max(1, Math.round(n * 0.4))];
+  const chestRoom      = rooms[Math.max(2, Math.round(n * 0.65))];
+  const stairsDownRoom = rooms[n-1];
+
+  grid[stairsDownRoom.cy][stairsDownRoom.cx] = 'stairs_down';
+  grid[keyRoom.cy][keyRoom.cx] = 'key';
+  if (chestRoom !== keyRoom) grid[chestRoom.cy][chestRoom.cx] = 'locked_chest';
+
   return {
-    keyPos:        pick(seeds[0]),
-    chestPos:      pick(seeds[1]),
-    stairsDownPos: pick(seeds[2]),
-    stairsUpPos:   pick(seeds[3]), // only rendered on floor > 1
+    grid,
+    startPos:      [startRoom.cx, startRoom.cy],
+    stairsUpPos:   [stairsUpRoom.cx, stairsUpRoom.cy],
+    stairsDownPos: [stairsDownRoom.cx, stairsDownRoom.cy],
+    keyPos:        [keyRoom.cx, keyRoom.cy],
+    chestPos:      [chestRoom.cx, chestRoom.cy],
   };
 }
 
-// Shared world, per-floor seed. Out-of-bounds → 'wall'. Special positions override normal gen.
-// Distribution: corridor 26%, empty 22%, gold_s 15%, gold_l 10%, trap 8%, monster 8%, chest 11%
-// Stairs are NOT random — exactly 1 stairs-down (and 1 stairs-up on floors > 1) per floor.
-export function getTileAt(dayKey, floor, x, y) {
-  if (x === 0 && y === 0) return 'start';
-  if (Math.max(Math.abs(x), Math.abs(y)) > FLOOR_RADIUS) return 'wall';
-  const { keyPos, chestPos, stairsDownPos, stairsUpPos } = floorSpecialPositions(dayKey, floor);
-  if (x === keyPos[0]        && y === keyPos[1])        return 'key';
-  if (x === chestPos[0]      && y === chestPos[1])      return 'locked_chest';
-  if (x === stairsDownPos[0] && y === stairsDownPos[1]) return 'stairs_down';
-  if (floor > 1 && x === stairsUpPos[0] && y === stairsUpPos[1]) return 'stairs_up';
-  const h = roomHash(dayKey, floor, x, y);
-  const r = (h >>> 0) / 0xffffffff;
-  if (r < 0.26) return 'corridor';
-  if (r < 0.48) return 'empty';
-  if (r < 0.63) return 'gold_s';
-  if (r < 0.73) return 'gold_l';
-  if (r < 0.81) return 'trap';
-  if (r < 0.89) return 'monster';
-  return 'chest';
+// Read tile from generated grid; out-of-bounds → 'wall'
+export function getTileAt(grid, gx, gy) {
+  if (!grid || gy < 0 || gy >= GRID_H || gx < 0 || gx >= GRID_W) return 'wall';
+  return grid[gy][gx];
 }
 
-export function initDungeonMap(dayKey) {
+export function initDungeonMap(dayKey, floor = 1) {
+  const data = generateFloor(dayKey, floor);
+  if (floor > 1) data.grid[data.stairsUpPos[1]][data.stairsUpPos[0]] = 'stairs_up';
+  const [sx, sy] = data.startPos;
   return {
-    pos: [0, 0],
-    explored: ['0,0'],
+    grid: data.grid,
+    pos: data.startPos,
+    startPos: data.startPos,
+    explored: [`${sx},${sy}`],
     pendingMoves: 0,
     activeMonster: null,
     dayKey,
-    floor: 1,
+    floor,
     hasKey: false,
     lockedChestOpened: false,
   };
@@ -80,120 +127,69 @@ export function dungeonMoveResult(mapState, dx, dy, dayKey, playerMode, luckLeve
   if (mapState.pendingMoves <= 0) return null;
   const floor = mapState.floor || 1;
 
-  const nx = px + dx;
-  const ny = py + dy;
-  // Block movement into walls
-  if (Math.max(Math.abs(nx), Math.abs(ny)) > FLOOR_RADIUS) return null;
+  const nx = px + dx, ny = py + dy;
+  const roomType = getTileAt(mapState.grid, nx, ny);
+  if (roomType === 'wall') return null;
 
   const coordKey = `${nx},${ny}`;
-  const roomType = getTileAt(dayKey, floor, nx, ny);
   const alreadyVisited = mapState.explored.includes(coordKey);
   const newExplored = alreadyVisited ? mapState.explored : [...mapState.explored, coordKey];
 
-  // Depth bonus: +10% per 5 tiles from origin; floor bonus: +15% per floor above 1
-  const chebDist = Math.max(Math.abs(nx), Math.abs(ny));
-  const depthMult = 1 + 0.10 * Math.floor(chebDist / 5);
-  const floorMult = 1 + 0.15 * (floor - 1);
-  const luckMult  = 1 + luckLevel * 1.2;
-  const totalMult = depthMult * floorMult * luckMult;
+  const [sx, sy] = mapState.startPos || [nx, ny];
+  const depth = Math.max(Math.abs(nx - sx), Math.abs(ny - sy));
+  const depthMult = 1 + 0.08 * Math.floor(depth / 3);
+  const floorMult = 1 + 0.20 * (floor - 1);
+  const totalMult = depthMult * floorMult * (1 + luckLevel * 1.2);
 
-  let goldDelta = 0;
-  let newActiveMonster = null;
-  let event = null;
-  let newFloor = floor;
-  let newPos = [nx, ny];
-  let finalExplored = newExplored;
   let hasKey = mapState.hasKey || false;
   let lockedChestOpened = mapState.lockedChestOpened || false;
 
-  // Stairs always trigger (even on revisit) — one-way progression deeper
+  // Stairs always trigger
   if (roomType === 'stairs_down') {
-    newFloor = floor + 1;
-    newPos = [0, 0];
-    finalExplored = ['0,0'];
-    hasKey = false;
-    lockedChestOpened = false;
-    event = { kind: 'stairs_down', label: `Descended to floor ${newFloor}` };
-  } else if (roomType === 'stairs_up' && floor > 1) {
-    newFloor = floor - 1;
-    newPos = [0, 0];
-    finalExplored = ['0,0'];
-    hasKey = false;
-    lockedChestOpened = false;
-    event = { kind: 'stairs_up', label: `Ascended to floor ${newFloor}` };
-  } else if (!alreadyVisited) {
-    const h = roomHash(dayKey, floor, nx, ny);
+    const nf = floor + 1;
+    const data = generateFloor(dayKey, nf);
+    data.grid[data.stairsUpPos[1]][data.stairsUpPos[0]] = 'stairs_up';
+    const [nsx, nsy] = data.startPos;
+    return { newMap: { ...mapState, grid: data.grid, pos: data.startPos, startPos: data.startPos, explored: [`${nsx},${nsy}`], pendingMoves: mapState.pendingMoves - 1, activeMonster: null, floor: nf, hasKey: false, lockedChestOpened: false }, goldDelta: 0, event: { kind: 'stairs_down', label: `Descended to floor ${nf}` } };
+  }
+  if (roomType === 'stairs_up' && floor > 1) {
+    const nf = floor - 1;
+    const data = generateFloor(dayKey, nf);
+    const [nsx, nsy] = data.startPos;
+    return { newMap: { ...mapState, grid: data.grid, pos: data.startPos, startPos: data.startPos, explored: [`${nsx},${nsy}`], pendingMoves: mapState.pendingMoves - 1, activeMonster: null, floor: nf, hasKey: false, lockedChestOpened: false }, goldDelta: 0, event: { kind: 'stairs_up', label: `Ascended to floor ${nf}` } };
+  }
+
+  let goldDelta = 0, newActiveMonster = null, event = null;
+  const h = `${nx},${ny},${floor}`.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0) >>> 0;
+
+  if (!alreadyVisited) {
     switch (roomType) {
-      case 'gold_s': {
-        goldDelta = Math.round((4 + (h % 7)) * totalMult);
-        event = { kind: 'gold', label: 'Found coins', gold: goldDelta };
-        break;
-      }
-      case 'gold_l': {
-        goldDelta = Math.round((14 + (h % 12)) * totalMult);
-        event = { kind: 'gold', label: 'Found treasure', gold: goldDelta };
-        break;
-      }
-      case 'chest': {
-        goldDelta = Math.round((28 + (h % 22)) * totalMult);
-        event = { kind: 'chest', label: 'Treasure chest!', gold: goldDelta };
-        break;
-      }
+      case 'gold_s':  goldDelta = Math.round((4  + (h % 7))  * totalMult); event = { kind: 'gold',   label: 'Found coins',           gold: goldDelta }; break;
+      case 'gold_l':  goldDelta = Math.round((14 + (h % 12)) * totalMult); event = { kind: 'gold',   label: 'Found treasure',         gold: goldDelta }; break;
+      case 'chest':   goldDelta = Math.round((28 + (h % 22)) * totalMult); event = { kind: 'chest',  label: 'Treasure chest!',        gold: goldDelta }; break;
       case 'trap': {
-        const raw = 3 + (h % 7) + Math.floor(floor / 2);
-        const reduced = Math.max(1, Math.round(raw * (1 - luckLevel * 0.6)));
-        goldDelta = -reduced;
-        event = { kind: 'trap', label: 'Triggered a trap!', gold: reduced };
-        break;
+        goldDelta = -Math.max(1, Math.round((3 + (h % 7) + Math.floor(floor/2)) * (1 - luckLevel * 0.6)));
+        event = { kind: 'trap', label: 'Triggered a trap!', gold: -goldDelta }; break;
       }
       case 'monster': {
-        const mIdx = h % MONSTERS.length;
-        const m = MONSTERS[mIdx];
-        const isKid = playerMode === 'kids';
-        newActiveMonster = { id: m.id, name: m.name, gold: isKid ? m.kidGold : m.gold };
-        event = { kind: 'monster', label: `${m.name} lurks!` };
-        break;
+        const m = MONSTERS[h % MONSTERS.length];
+        newActiveMonster = { id: m.id, name: m.name, gold: playerMode === 'kids' ? m.kidGold : m.gold };
+        event = { kind: 'monster', label: `${m.name} lurks!` }; break;
       }
-      case 'key': {
-        hasKey = true;
-        goldDelta = Math.round(5 * totalMult);
-        event = { kind: 'key', label: 'Found the floor key!', gold: goldDelta };
+      case 'key': hasKey = true; goldDelta = Math.round(5 * totalMult); event = { kind: 'key', label: 'Found the floor key!', gold: goldDelta }; break;
+      case 'locked_chest':
+        if (hasKey) { goldDelta = Math.round((50 + (h % 30)) * totalMult); hasKey = false; lockedChestOpened = true; event = { kind: 'locked_chest', label: 'Unlocked the bonus chest!', gold: goldDelta }; }
+        else if (!lockedChestOpened) { event = { kind: 'locked_chest_locked', label: 'Locked! Find the key first.' }; }
         break;
-      }
-      case 'locked_chest': {
-        if (hasKey) {
-          goldDelta = Math.round((50 + (h % 30)) * totalMult);
-          hasKey = false;
-          lockedChestOpened = true;
-          event = { kind: 'locked_chest', label: 'Unlocked the bonus chest!', gold: goldDelta };
-        } else if (!lockedChestOpened) {
-          event = { kind: 'locked_chest_locked', label: 'Locked! Find the key first.' };
-        }
-        break;
-      }
       default: break;
     }
   } else if (roomType === 'locked_chest' && !lockedChestOpened && hasKey) {
-    // Revisiting locked chest while now holding the key — open it
-    const h = roomHash(dayKey, floor, nx, ny);
     goldDelta = Math.round((50 + (h % 30)) * totalMult);
-    hasKey = false;
-    lockedChestOpened = true;
+    hasKey = false; lockedChestOpened = true;
     event = { kind: 'locked_chest', label: 'Unlocked the bonus chest!', gold: goldDelta };
   }
 
-  const newMap = {
-    ...mapState,
-    pos: newPos,
-    explored: finalExplored,
-    pendingMoves: mapState.pendingMoves - 1,
-    activeMonster: newActiveMonster,
-    floor: newFloor,
-    hasKey,
-    lockedChestOpened,
-  };
-
-  return { newMap, goldDelta, event };
+  return { newMap: { ...mapState, pos: [nx, ny], explored: newExplored, pendingMoves: mapState.pendingMoves - 1, activeMonster: newActiveMonster, hasKey, lockedChestOpened }, goldDelta, event };
 }
 
 export function todayKey() {

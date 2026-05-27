@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS } from './data';
-import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, resolveMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, initDungeonMap, dungeonMoveResult } from './logic';
+import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, resolveMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, initDungeonMap, dungeonMoveResult, generateFloor } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
@@ -112,7 +112,7 @@ function applyAutoResets(raw, players) {
     const freshMaps = {};
     players.forEach(pl => {
       const startMoves = 5 + Math.floor(Math.random() * 6);
-      freshMaps[pl.id] = { ...initDungeonMap(state.todayKey), pendingMoves: startMoves };
+      freshMaps[pl.id] = { ...initDungeonMap(state.todayKey, 1), pendingMoves: startMoves };
     });
     state.dungeonMaps = freshMaps;
     changed = true;
@@ -131,13 +131,13 @@ function applyAutoResets(raw, players) {
     changed = true;
   }
 
-  // Migrate: ensure all players have a valid (new-format) dungeon map for today
+  // Migrate: ensure all players have a valid BSP-grid dungeon map for today
   if (!state.dungeonMaps) state.dungeonMaps = {};
   players.forEach(pl => {
     const dm = state.dungeonMaps[pl.id];
-    if (!dm || dm.grid !== undefined || dm.dayKey !== state.todayKey) {
+    if (!dm || !dm.grid || dm.dayKey !== state.todayKey) {
       const startMoves = 5 + Math.floor(Math.random() * 6);
-      state.dungeonMaps[pl.id] = { ...initDungeonMap(state.todayKey || todayKey()), pendingMoves: startMoves };
+      state.dungeonMaps[pl.id] = { ...initDungeonMap(state.todayKey || todayKey(), 1), pendingMoves: startMoves };
       changed = true;
     }
   });
@@ -337,10 +337,11 @@ export default function App() {
       if (dungeonMap.activeMonster) {
         dungeonGoldBonus = dungeonMap.activeMonster.gold;
         dungeonKillName = dungeonMap.activeMonster.name;
-        // Clearing a dungeon monster grants 1 move (it's a reward, not a tax)
-        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
+        // Killing a dungeon monster: +3 moves (2 base + 1 kill bonus)
+        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 3 } };
       } else {
-        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
+        // Regular chore: +2 moves
+        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, pendingMoves: (dungeonMap.pendingMoves || 0) + 2 } };
       }
     }
 

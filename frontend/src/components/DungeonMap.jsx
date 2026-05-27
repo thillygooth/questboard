@@ -1,134 +1,150 @@
 import React from 'react';
-import { getTileAt, FLOOR_RADIUS } from '../logic';
+import { getTileAt, GRID_W, GRID_H } from '../logic';
 
-const VIEW = 9;        // viewport side length (odd = player in center)
-const HALF = 4;        // floor(VIEW/2)
-const CELL = 36;       // px per cell
+const VIEW = 11;       // viewport side (odd = player centered)
+const HALF = 5;
+const CELL = 34;       // px per cell
 
-// Tiles hidden until player actually steps on them (random encounter)
-const HIDDEN_TYPES = new Set(['trap', 'monster']);
-// Tiles whose icons are visible 1 tile away — discoverable before stepping
-const NEAR_VISIBLE_TYPES = new Set(['stairs_down', 'stairs_up', 'key', 'locked_chest']);
+// Sprites — all 16px native tiles displayed at 2× (32px) or scaled to CELL
+const S = '/sprites/minidungeon';
 
-// Visual config per room type
-const ROOM_STYLE = {
-  start:        { bg: '#0e2c1c', icon: '★',  iconColor: '#50c870' },
-  corridor:     { bg: '#110e18', icon: null },
-  empty:        { bg: '#13101e', icon: null },
-  gold_s:       { bg: '#1a1606', icon: '·',   iconColor: '#c8952a' },
-  gold_l:       { bg: '#221c08', icon: '◆',   iconColor: '#e8b84b' },
-  chest:        { bg: '#26200a', icon: '▣',   iconColor: '#ffe060' },
-  trap:         { bg: '#220808', icon: '✕',   iconColor: '#cc3030' },
-  monster:      { bg: '#1e0c14', icon: '☠',   iconColor: '#dd3050' },
-  stairs_down:  { bg: '#12082a', icon: '▼',   iconColor: '#b88cff' },
-  stairs_up:    { bg: '#0a1820', icon: '▲',   iconColor: '#88c8ff' },
-  key:          { bg: '#1a1400', icon: '◇',   iconColor: '#ffd700' },
-  locked_chest: { bg: '#1a1200', icon: '▣',   iconColor: '#778899' }, // grey = locked; gold = unlockable
-  wall:         { bg: '#050308', icon: null },
+// Per-tile rendering config
+const TILE_CFG = {
+  floor:        { wall: false },
+  wall:         { wall: true  },
+  start:        { wall: false },
+  corridor:     { wall: false },
+  gold_s:       { wall: false, obj: `${S}/Coin.png`,          fw: 112, fh: 16, frames: 7, tw: 16, th: 16 },
+  gold_l:       { wall: false, obj: `${S}/Coin.png`,          fw: 112, fh: 16, frames: 7, tw: 16, th: 16, tint: '#ffd700' },
+  chest:        { wall: false, obj: `${S}/Chest_Open_Filled.png`, fw: 64, fh: 32, frames: 4, tw: 16, th: 32 },
+  trap:         { wall: false, obj: `${S}/Spike_1.png`,       fw: 48,  fh: 32, frames: 3, tw: 16, th: 32 },
+  monster:      { wall: false, obj: null, icon: '☠', iconColor: '#dd3050' },
+  key:          { wall: false, obj: `${S}/Key.png`,           fw: 128, fh: 16, frames: 8, tw: 16, th: 16 },
+  locked_chest: { wall: false, obj: `${S}/Chest_Closed.png`,  fw: 112, fh: 32, frames: 7, tw: 16, th: 32 },
+  stairs_down:  { wall: false, obj: `${S}/Trapdoor.png`,      fw: 96,  fh: 32, frames: 3, tw: 32, th: 32 },
+  stairs_up:    { wall: false, obj: `${S}/Trapdoor.png`,      fw: 96,  fh: 32, frames: 3, tw: 32, th: 32, frame: 2 },
 };
 
-const FLOOR_TILE_SIZE = 32; // puny_dungeon tile size
-// puny_dungeon.png: 416x320, 16px native tiles, we'll use 32x32 sections
-const FLOOR_BG = "url('/sprites/dungeon_floor.png')";
+const HIDDEN_TYPES = new Set(['trap', 'monster']);
+const NEAR_VISIBLE  = new Set(['stairs_down', 'stairs_up', 'key', 'locked_chest']);
 
 const PLAYER_COLORS = ['#50b8ff', '#50e870', '#ff9050', '#e050ff'];
 
-function getCellStyle(tileType, vis, isPlayer, isCorridor) {
-  if (tileType === 'wall') {
-    return { backgroundColor: '#050308' };
-  }
-  if (vis === 'fog') {
-    return { backgroundColor: '#020105' };
-  }
+// Fog tint based on visibility
+function fogStyle(vis) {
+  if (vis === 'fog')    return 'rgba(2,1,5,0.98)';
+  if (vis === 'shadow') return 'rgba(2,1,5,0.72)';
+  if (vis === 'visited') return 'rgba(2,1,5,0.38)';
+  return null;
+}
 
-  const style = ROOM_STYLE[tileType] || ROOM_STYLE.empty;
+function WallCell({ size, hasFloorSouth }) {
+  return (
+    <div style={{
+      width: size, height: size,
+      backgroundColor: hasFloorSouth ? '#2c2440' : '#0e0c18',
+      borderBottom: hasFloorSouth ? `3px solid #4a3e6a` : 'none',
+      boxSizing: 'border-box',
+    }} />
+  );
+}
 
-  if (vis === 'shadow') {
-    // Within view range but not current — dark stone texture
-    return {
-      backgroundImage: FLOOR_BG,
-      backgroundSize: '128px 64px',
-      backgroundColor: '#0a0812',
-      backgroundBlendMode: 'luminosity',
-      opacity: 0.45,
-    };
-  }
+function FloorCell({ size, tileType, vis, isPlayer, isExplored, hasKey, othersHere }) {
+  const cfg = TILE_CFG[tileType] || {};
+  const isHidden  = HIDDEN_TYPES.has(tileType) && !isExplored;
+  const isNearVis = NEAR_VISIBLE.has(tileType) && (vis === 'near' || vis === 'current' || isExplored);
+  const showObj   = cfg.obj && !isHidden && (isExplored || isNearVis);
+  const showIcon  = cfg.icon && !isHidden && isExplored;
 
-  // Explored or current — show floor texture with tint
-  return {
-    backgroundImage: FLOOR_BG,
-    backgroundSize: '128px 64px',
-    backgroundColor: style.bg,
-    backgroundBlendMode: 'overlay',
-    opacity: isPlayer ? 1 : (vis === 'near' ? 1 : 0.75),
-  };
+  const frame = cfg.frame ?? 0;
+  const objScale = cfg.th === 32 ? 1.5 : 2; // tall sprites at 1.5×, others at 2×
+  const objW = cfg.tw ? cfg.tw * objScale : size;
+  const objH = cfg.th ? cfg.th * objScale : size;
+  const stripW = cfg.fw ? cfg.fw * objScale : size;
+  const stripH = cfg.fh ? cfg.fh * objScale : size;
+
+  // Locked chest glows gold when player holds the key
+  const chestTint = tileType === 'locked_chest' && hasKey ? 'sepia(1) saturate(3) hue-rotate(10deg)' : undefined;
+
+  const fog = fogStyle(vis);
+
+  return (
+    <div style={{ width: size, height: size, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Floor texture */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `url('${S}/Floor.png')`,
+        backgroundSize: `${size}px ${size}px`,
+        backgroundRepeat: 'no-repeat',
+        imageRendering: 'pixelated',
+      }} />
+
+      {/* Object sprite */}
+      {showObj && (
+        <div style={{
+          position: 'absolute',
+          bottom: tileType === 'stairs_down' || tileType === 'stairs_up' ? 0 : 2,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: objW, height: objH,
+          backgroundImage: `url('${cfg.obj}')`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: `-${frame * objW}px 0`,
+          backgroundSize: `${stripW}px ${stripH}px`,
+          imageRendering: 'pixelated',
+          filter: chestTint,
+          zIndex: 2,
+        }} />
+      )}
+
+      {/* Icon fallback (monster) */}
+      {showIcon && !showObj && (
+        <span style={{ fontFamily: 'var(--pixel)', fontSize: Math.round(size * 0.45), color: cfg.iconColor, zIndex: 2, position: 'relative' }}>
+          {cfg.icon}
+        </span>
+      )}
+
+      {/* Start marker */}
+      {tileType === 'start' && isExplored && !isPlayer && (
+        <span style={{ fontFamily: 'var(--pixel)', fontSize: Math.round(size * 0.4), color: '#50c870', zIndex: 2, position: 'relative' }}>★</span>
+      )}
+
+      {/* Other players */}
+      {othersHere.length > 0 && !isPlayer && (
+        <span style={{ fontFamily: 'var(--pixel)', fontSize: Math.round(size * 0.45), color: othersHere[0].color, textShadow: `0 0 8px ${othersHere[0].color}99`, zIndex: 3, position: 'relative' }}>@</span>
+      )}
+
+      {/* Player marker */}
+      {isPlayer && (
+        <span style={{ fontFamily: 'var(--pixel)', fontSize: Math.round(size * 0.5), color: '#50b8ff', fontWeight: 'bold', textShadow: '0 0 8px rgba(80,184,255,0.9)', zIndex: 3, position: 'relative' }}>@</span>
+      )}
+
+      {/* Fog overlay */}
+      {fog && <div style={{ position: 'absolute', inset: 0, background: fog, zIndex: 4, pointerEvents: 'none' }} />}
+    </div>
+  );
 }
 
 export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDungeonMaps = {}, onMove, cellSize = CELL }) {
-  if (!dungeonMap || !player) return null;
-  const { pos, explored, pendingMoves, activeMonster, dayKey, floor = 1 } = dungeonMap;
+  if (!dungeonMap?.grid || !player) return null;
+  const { grid, pos, explored, pendingMoves, activeMonster, floor = 1 } = dungeonMap;
   const [px, py] = pos;
   const canMove = pendingMoves > 0 && !activeMonster;
-  const inBounds = (dx, dy) => Math.max(Math.abs(px + dx), Math.abs(py + dy)) <= FLOOR_RADIUS;
 
-  // Build a lookup: world key → [{ player, color }] for other players' positions
+  // Other players' positions indexed by coord key
   const otherPlayerAt = {};
   allPlayers.forEach((p, idx) => {
     if (p.id === player.id) return;
     const dm = allDungeonMaps[p.id];
-    if (!dm) return;
+    if (!dm?.pos) return;
     const k = `${dm.pos[0]},${dm.pos[1]}`;
     if (!otherPlayerAt[k]) otherPlayerAt[k] = [];
     otherPlayerAt[k].push({ player: p, color: PLAYER_COLORS[idx % PLAYER_COLORS.length] });
   });
 
-  // Build the 9×9 viewport centered on player
-  const cells = [];
-  for (let vy = 0; vy < VIEW; vy++) {
-    for (let vx = 0; vx < VIEW; vx++) {
-      const wx = px + (vx - HALF);   // world x
-      const wy = py + (vy - HALF);   // world y
-      const key = `${wx},${wy}`;
-      const isPlayer = vx === HALF && vy === HALF;
-      const isExplored = explored.includes(key);
+  const canMoveTo = (dx, dy) => canMove && getTileAt(grid, px + dx, py + dy) !== 'wall';
 
-      // Fog of war: only current + adjacent (1 tile) are "near", explored = seen before
-      const distFromPlayer = Math.max(Math.abs(vx - HALF), Math.abs(vy - HALF));
-      let vis;
-      if (distFromPlayer === 0) vis = 'current';
-      else if (distFromPlayer === 1) vis = 'near';
-      else if (isExplored) vis = 'visited';
-      else if (distFromPlayer <= 2) vis = 'shadow';
-      else vis = 'fog';
-
-      const isWall = Math.max(Math.abs(wx), Math.abs(wy)) > FLOOR_RADIUS;
-      const tileType = isWall ? 'wall' : (vis !== 'fog') ? getTileAt(dayKey, floor, wx, wy) : 'empty';
-      const isCorridor = tileType === 'corridor';
-      const othersHere = (!isWall && otherPlayerAt[key]) || [];
-
-      // Decide what icon to show
-      const styleDef = ROOM_STYLE[tileType] || ROOM_STYLE.empty;
-      const isHidden = HIDDEN_TYPES.has(tileType) && !isExplored;
-      const showIcon = styleDef.icon && !isPlayer && !isHidden && !isWall && (
-        isExplored || (NEAR_VISIBLE_TYPES.has(tileType) && (vis === 'near' || vis === 'current'))
-      );
-      // Locked chest glows gold when player is carrying the key
-      const iconColor = (tileType === 'locked_chest' && (dungeonMap.hasKey || false))
-        ? '#ffe060'
-        : styleDef.iconColor;
-
-      cells.push({
-        key, vx, vy, wx, wy, isPlayer, vis, tileType, isCorridor,
-        showIcon,
-        icon: styleDef.icon,
-        iconColor,
-        cellStyle: getCellStyle(tileType, vis, isPlayer, isCorridor),
-        othersHere,
-      });
-    }
-  }
-
-  const gridPx = VIEW * cellSize + (VIEW - 1) * 2;
+  const gridPx = VIEW * cellSize + (VIEW - 1) * 1;
 
   return (
     <div className="dmap-tab-layout">
@@ -137,17 +153,14 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
         <div className="dmap-sidebar-title">LEGEND</div>
         <div className="dmap-legend">
           {[
-            { icon: '@',  color: '#50b8ff', label: 'You' },
-            { icon: '@',  color: '#50e870', label: 'Party' },
-            { icon: '·',  color: '#c8952a', label: 'Small gold' },
-            { icon: '◆',  color: '#e8b84b', label: 'Treasure' },
-            { icon: '▣',  color: '#ffe060', label: 'Chest' },
-            { icon: '◇',  color: '#ffd700', label: 'Key' },
-            { icon: '▣',  color: '#778899', label: 'Locked chest' },
-            { icon: '▼',  color: '#b88cff', label: 'Stairs down' },
-            { icon: '▲',  color: '#88c8ff', label: 'Stairs up' },
-            { icon: '?',  color: '#666',    label: 'Danger (hidden)' },
-            { icon: '★',  color: '#50c870', label: 'Start' },
+            { icon: '@', color: '#50b8ff', label: 'You' },
+            { icon: '@', color: '#50e870', label: 'Party' },
+            { icon: '◇', color: '#ffd700', label: 'Key' },
+            { icon: '▣', color: '#778899', label: 'Locked chest' },
+            { icon: '▼', color: '#b88cff', label: 'Stairs down' },
+            { icon: '▲', color: '#88c8ff', label: 'Stairs up' },
+            { icon: '?', color: '#666',    label: 'Danger' },
+            { icon: '★', color: '#50c870', label: 'Start' },
           ].map(({ icon, color, label }) => (
             <div key={label} className="dmap-legend-row">
               <span style={{ color, fontFamily: 'var(--pixel)', fontSize: 10 }}>{icon}</span>
@@ -156,7 +169,7 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
           ))}
         </div>
 
-        <div className="dmap-sidebar-title" style={{ marginTop: 18 }}>STATUS</div>
+        <div className="dmap-sidebar-title" style={{ marginTop: 14 }}>STATUS</div>
         <div className="dmap-status">
           <div className="dmap-status-row">
             <span className="dmap-status-label">Floor:</span>
@@ -170,28 +183,23 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
           </div>
           <div className="dmap-status-row">
             <span className="dmap-status-label">Moves:</span>
-            <span className="dmap-status-val" style={{ color: pendingMoves > 0 ? '#80c8ff' : '#555' }}>
-              {pendingMoves}
-            </span>
+            <span className="dmap-status-val" style={{ color: pendingMoves > 0 ? '#80c8ff' : '#555' }}>{pendingMoves}</span>
           </div>
           <div className="dmap-status-row">
-            <span className="dmap-status-label">Visited:</span>
+            <span className="dmap-status-label">Explored:</span>
             <span className="dmap-status-val">{explored.length} rooms</span>
-          </div>
-          <div className="dmap-status-row">
-            <span className="dmap-status-label">Position:</span>
-            <span className="dmap-status-val">{px},{py}</span>
           </div>
         </div>
 
+        {/* Party positions */}
         {allPlayers.filter(p => p.id !== player.id && allDungeonMaps[p.id]).length > 0 && (
           <>
-            <div className="dmap-sidebar-title" style={{ marginTop: 18 }}>PARTY</div>
+            <div className="dmap-sidebar-title" style={{ marginTop: 14 }}>PARTY</div>
             <div className="dmap-status">
               {allPlayers.map((p, idx) => {
                 if (p.id === player.id) return null;
                 const dm = allDungeonMaps[p.id];
-                if (!dm) return null;
+                if (!dm?.pos) return null;
                 const [ox, oy] = dm.pos;
                 const dist = Math.max(Math.abs(ox - px), Math.abs(oy - py));
                 const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
@@ -200,7 +208,7 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
                     <span style={{ color, fontFamily: 'var(--pixel)', fontSize: 9 }}>@</span>
                     <span className="dmap-status-label" style={{ marginLeft: 4 }}>{p.name}</span>
                     <span className="dmap-status-val" style={{ color: dist === 0 ? color : undefined }}>
-                      {dist === 0 ? 'here!' : `${ox},${oy}`}
+                      {dist === 0 ? 'here!' : `f${dm.floor || 1}`}
                     </span>
                   </div>
                 );
@@ -217,7 +225,6 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
             <div className="dmap-warning-tip">Complete a chore to defeat it</div>
           </div>
         )}
-
         {!activeMonster && pendingMoves === 0 && (
           <div className="dmap-no-moves">
             <div className="dmap-no-moves-icon">⚡</div>
@@ -230,143 +237,82 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
       <div className="dmap-center">
         <div className="dmap-title-row">
           <span className="dmap-main-title">⚔ {player.name}&apos;s Dungeon</span>
-          <span style={{ fontFamily: 'var(--pixel)', fontSize: 9, color: '#b88cff', marginLeft: 10 }}>
-            Floor {floor}
-          </span>
+          <span style={{ fontFamily: 'var(--pixel)', fontSize: 9, color: '#b88cff', marginLeft: 10 }}>Floor {floor}</span>
         </div>
 
-        {/* Map grid */}
         <div
           className="dmap-viewport"
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${VIEW}, ${cellSize}px)`,
             gridTemplateRows: `repeat(${VIEW}, ${cellSize}px)`,
-            gap: 2,
+            gap: 1,
             width: gridPx,
             imageRendering: 'pixelated',
-            border: '2px solid rgba(80,50,20,0.6)',
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.6)',
-            borderRadius: 4,
+            border: '2px solid rgba(80,50,20,0.5)',
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.8), 0 0 16px rgba(0,0,0,0.6)',
+            borderRadius: 3,
             overflow: 'hidden',
           }}
         >
-          {cells.map(({ key, vx, vy, wx, wy, isPlayer, vis, tileType, isCorridor, showIcon, icon, iconColor, cellStyle, othersHere }) => {
-            const fontSize = isCorridor ? Math.round(cellSize * 0.3) : Math.round(cellSize * 0.45);
-            const isActiveMonsterHere = isPlayer && !!activeMonster;
+          {Array.from({ length: VIEW * VIEW }, (_, i) => {
+            const vx = i % VIEW, vy = Math.floor(i / VIEW);
+            const wx = px + (vx - HALF);
+            const wy = py + (vy - HALF);
+            const key = `${wx},${wy}`;
+            const isPlayer = vx === HALF && vy === HALF;
+            const isExplored = explored.includes(key);
+            const dist = Math.max(Math.abs(vx - HALF), Math.abs(vy - HALF));
+            const vis = dist === 0 ? 'current' : dist === 1 ? 'near' : isExplored ? 'visited' : dist <= 2 ? 'shadow' : 'fog';
+            const tileType = vis !== 'fog' ? getTileAt(grid, wx, wy) : 'wall';
+            const othersHere = (!TILE_CFG[tileType]?.wall && otherPlayerAt[key]) || [];
 
-            // Narrow corridor visual: inner padding
-            const innerPad = isCorridor && !isPlayer ? Math.round(cellSize * 0.22) : 0;
+            if (tileType === 'wall') {
+              const hasFloorSouth = vis !== 'fog' && getTileAt(grid, wx, wy + 1) !== 'wall';
+              const fog = fogStyle(vis);
+              return (
+                <div key={key} style={{ width: cellSize, height: cellSize, position: 'relative' }}>
+                  <WallCell size={cellSize} hasFloorSouth={hasFloorSouth} />
+                  {fog && <div style={{ position: 'absolute', inset: 0, background: fog, pointerEvents: 'none' }} />}
+                </div>
+              );
+            }
 
             return (
-              <div
+              <FloorCell
                 key={key}
-                style={{
-                  width: cellSize,
-                  height: cellSize,
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundPosition: `${(((wx % 4) + 4) % 4) * cellSize}px ${(((wy % 2) + 2) % 2) * cellSize}px`,
-                  ...cellStyle,
-                }}
-              >
-                {/* Corridor narrowing overlay */}
-                {isCorridor && !isPlayer && vis !== 'fog' && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: `
-                      linear-gradient(to bottom, #020105 ${innerPad}px, transparent ${innerPad}px, transparent ${cellSize - innerPad}px, #020105 ${cellSize - innerPad}px)
-                    `,
-                    pointerEvents: 'none',
-                  }} />
-                )}
-
-                {/* Player marker */}
-                {isPlayer && (
-                  <span style={{
-                    fontFamily: 'var(--pixel)',
-                    fontSize: Math.round(cellSize * 0.5),
-                    color: isActiveMonsterHere ? '#ff4060' : '#50b8ff',
-                    fontWeight: 'bold',
-                    lineHeight: 1,
-                    textShadow: isActiveMonsterHere
-                      ? '0 0 8px rgba(255,64,96,0.9)'
-                      : '0 0 8px rgba(80,184,255,0.8)',
-                    zIndex: 2,
-                    position: 'relative',
-                  }}>
-                    {isActiveMonsterHere ? '!' : '@'}
-                  </span>
-                )}
-
-                {/* Other players on this cell */}
-                {othersHere.length > 0 && !isPlayer && vis !== 'fog' && (
-                  <span style={{
-                    fontFamily: 'var(--pixel)',
-                    fontSize: Math.round(cellSize * 0.45),
-                    color: othersHere[0].color,
-                    lineHeight: 1,
-                    textShadow: `0 0 8px ${othersHere[0].color}99`,
-                    position: 'relative',
-                    zIndex: 3,
-                  }}>
-                    @
-                  </span>
-                )}
-
-                {/* Room icon */}
-                {showIcon && othersHere.length === 0 && (
-                  <span style={{
-                    fontFamily: 'var(--pixel)',
-                    fontSize,
-                    color: iconColor,
-                    lineHeight: 1,
-                    opacity: vis === 'visited' ? 0.65 : 1,
-                    textShadow: `0 0 4px ${iconColor}60`,
-                    position: 'relative',
-                    zIndex: 2,
-                  }}>
-                    {icon}
-                  </span>
-                )}
-
-                {/* Fog of war overlay for shadow/near cells */}
-                {(vis === 'shadow') && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(2,1,5,0.55)',
-                    pointerEvents: 'none',
-                  }} />
-                )}
-              </div>
+                size={cellSize}
+                tileType={tileType}
+                vis={vis}
+                isPlayer={isPlayer}
+                isExplored={isExplored}
+                hasKey={dungeonMap.hasKey || false}
+                othersHere={othersHere}
+              />
             );
           })}
         </div>
 
         {/* D-pad */}
-        <div className="dmap-dpad" style={{ marginTop: 16 }}>
+        <div className="dmap-dpad" style={{ marginTop: 12 }}>
           <div className="dmap-dpad-row">
             <button className="dmap-btn" style={{ width: cellSize, height: cellSize - 4 }}
-              onClick={() => onMove(0, -1)} disabled={!canMove || !inBounds(0,-1)} title="North">▲</button>
+              onClick={() => onMove(0, -1)} disabled={!canMoveTo(0, -1)}>▲</button>
           </div>
           <div className="dmap-dpad-row">
             <button className="dmap-btn" style={{ width: cellSize, height: cellSize - 4 }}
-              onClick={() => onMove(-1, 0)} disabled={!canMove || !inBounds(-1,0)} title="West">◀</button>
+              onClick={() => onMove(-1, 0)} disabled={!canMoveTo(-1, 0)}>◀</button>
             <div style={{ width: cellSize, height: cellSize - 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--pixel)', fontSize: 9, color: 'var(--text2)' }}>
                 {pendingMoves > 0 ? `⚡${pendingMoves}` : '·'}
               </span>
             </div>
             <button className="dmap-btn" style={{ width: cellSize, height: cellSize - 4 }}
-              onClick={() => onMove(1, 0)} disabled={!canMove || !inBounds(1,0)} title="East">▶</button>
+              onClick={() => onMove(1, 0)} disabled={!canMoveTo(1, 0)}>▶</button>
           </div>
           <div className="dmap-dpad-row">
             <button className="dmap-btn" style={{ width: cellSize, height: cellSize - 4 }}
-              onClick={() => onMove(0, 1)} disabled={!canMove || !inBounds(0,1)} title="South">▼</button>
+              onClick={() => onMove(0, 1)} disabled={!canMoveTo(0, 1)}>▼</button>
           </div>
         </div>
       </div>
@@ -375,42 +321,20 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
       <div className="dmap-sidebar">
         <div className="dmap-sidebar-title">HOW TO PLAY</div>
         <div className="dmap-guide">
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon">⚔</span>
-            <span>Each chore earns 1 move</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon" style={{ color: '#c8952a' }}>◆</span>
-            <span>Gold rooms give bonus coins</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon" style={{ color: '#ffe060' }}>▣</span>
-            <span>Chests are the biggest reward</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon">?</span>
-            <span>Danger rooms are hidden — step in to trigger them</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon">☠</span>
-            <span>Monsters block movement until a chore is done</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon">🌫</span>
-            <span>Map resets at midnight</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon" style={{ color: '#ffd700' }}>◇</span>
-            <span>Find the key, then find the locked chest for a big bonus</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon" style={{ color: '#b88cff' }}>▼</span>
-            <span>One staircase down per floor — go deeper for richer rewards</span>
-          </div>
-          <div className="dmap-guide-row">
-            <span className="dmap-guide-icon">∞</span>
-            <span>The dungeon is infinite — explore as far as you dare</span>
-          </div>
+          {[
+            ['⚔', 'Each chore earns 2 moves'],
+            ['☠', 'Defeat dungeon monsters for 3 moves'],
+            ['◇', 'Find the key, then the locked chest for big gold'],
+            ['▼', 'One staircase down per floor — deeper = richer'],
+            ['▲', 'Stairs up go back to the previous floor'],
+            ['?', 'Danger rooms are hidden until you enter'],
+            ['🌫', 'Map resets at midnight'],
+          ].map(([icon, text]) => (
+            <div key={text} className="dmap-guide-row">
+              <span className="dmap-guide-icon">{icon}</span>
+              <span>{text}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
