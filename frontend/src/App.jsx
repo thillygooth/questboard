@@ -110,7 +110,11 @@ function applyAutoResets(raw, players) {
     state.todayKey = todayKey();
     state.monsterBaseline = {};
     const freshMaps = {};
-    players.forEach(pl => { freshMaps[pl.id] = initDungeonMap(pl.id, state.todayKey); });
+    players.forEach(pl => {
+      const { level } = getLevelFromXP(state.xp?.[pl.id] || 0);
+      const startMoves = 2 + Math.floor(level / 3);
+      freshMaps[pl.id] = { ...initDungeonMap(pl.id, state.todayKey), pendingMoves: startMoves };
+    });
     state.dungeonMaps = freshMaps;
     changed = true;
   }
@@ -132,9 +136,10 @@ function applyAutoResets(raw, players) {
   if (!state.dungeonMaps) state.dungeonMaps = {};
   players.forEach(pl => {
     const dm = state.dungeonMaps[pl.id];
-    // Reinit if missing, wrong day, or old format (has a grid property)
     if (!dm || dm.grid !== undefined || dm.dayKey !== state.todayKey) {
-      state.dungeonMaps[pl.id] = initDungeonMap(pl.id, state.todayKey || todayKey());
+      const { level } = getLevelFromXP(state.xp?.[pl.id] || 0);
+      const startMoves = 2 + Math.floor(level / 3);
+      state.dungeonMaps[pl.id] = { ...initDungeonMap(pl.id, state.todayKey || todayKey()), pendingMoves: startMoves };
       changed = true;
     }
   });
