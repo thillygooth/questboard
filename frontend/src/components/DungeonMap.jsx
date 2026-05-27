@@ -7,6 +7,8 @@ const CELL = 36;       // px per cell
 
 // Tiles hidden until player actually steps on them (random encounter)
 const HIDDEN_TYPES = new Set(['trap', 'monster']);
+// Tiles whose icons are visible from 1 tile away (not fog) — discoverable before stepping
+const NEAR_VISIBLE_TYPES = new Set(['stairs']);
 
 // Visual config per room type — only shown on explored cells
 const ROOM_STYLE = {
@@ -18,6 +20,7 @@ const ROOM_STYLE = {
   chest:    { bg: '#26200a', icon: '▣',  iconColor: '#ffe060' },
   trap:     { bg: '#220808', icon: '✕',  iconColor: '#cc3030' },  // icon hidden until visited
   monster:  { bg: '#1e0c14', icon: '☠',  iconColor: '#dd3050' },  // icon hidden until visited
+  stairs:   { bg: '#12082a', icon: '↓',  iconColor: '#b88cff' },  // visible when near
 };
 
 const FLOOR_TILE_SIZE = 32; // puny_dungeon tile size
@@ -56,7 +59,7 @@ function getCellStyle(tileType, vis, isPlayer, isCorridor) {
 
 export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDungeonMaps = {}, onMove, cellSize = CELL }) {
   if (!dungeonMap || !player) return null;
-  const { pos, explored, pendingMoves, activeMonster, dayKey } = dungeonMap;
+  const { pos, explored, pendingMoves, activeMonster, dayKey, floor = 1 } = dungeonMap;
   const [px, py] = pos;
   const canMove = pendingMoves > 0 && !activeMonster;
 
@@ -90,19 +93,21 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
       else if (distFromPlayer <= 2) vis = 'shadow';
       else vis = 'fog';
 
-      const tileType = (vis !== 'fog') ? getTileAt(dayKey, wx, wy) : 'empty';
+      const tileType = (vis !== 'fog') ? getTileAt(dayKey, floor, wx, wy) : 'empty';
       const isCorridor = tileType === 'corridor';
       const othersHere = otherPlayerAt[key] || [];
 
       // Decide what icon to show
       const styleDef = ROOM_STYLE[tileType] || ROOM_STYLE.empty;
-      const showIcon = styleDef.icon && isExplored && !isPlayer;
-      // Hide trap/monster icons until the player has actually stepped on them
       const isHidden = HIDDEN_TYPES.has(tileType) && !isExplored;
+      // Near-visible types (stairs) show icon when within sight, others only when explored
+      const showIcon = styleDef.icon && !isPlayer && !isHidden && (
+        isExplored || (NEAR_VISIBLE_TYPES.has(tileType) && (vis === 'near' || vis === 'current'))
+      );
 
       cells.push({
         key, vx, vy, wx, wy, isPlayer, vis, tileType, isCorridor,
-        showIcon: showIcon && !isHidden,
+        showIcon,
         icon: styleDef.icon,
         iconColor: styleDef.iconColor,
         cellStyle: getCellStyle(tileType, vis, isPlayer, isCorridor),
@@ -125,6 +130,7 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
             { icon: '·',  color: '#c8952a', label: 'Small gold' },
             { icon: '◆',  color: '#e8b84b', label: 'Treasure' },
             { icon: '▣',  color: '#ffe060', label: 'Chest' },
+            { icon: '↓',  color: '#b88cff', label: 'Stairs down' },
             { icon: '?',  color: '#666',    label: 'Danger (hidden)' },
             { icon: '★',  color: '#50c870', label: 'Start' },
           ].map(({ icon, color, label }) => (
@@ -137,6 +143,10 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
 
         <div className="dmap-sidebar-title" style={{ marginTop: 18 }}>STATUS</div>
         <div className="dmap-status">
+          <div className="dmap-status-row">
+            <span className="dmap-status-label">Floor:</span>
+            <span className="dmap-status-val" style={{ color: '#b88cff' }}>{floor}</span>
+          </div>
           <div className="dmap-status-row">
             <span className="dmap-status-label">Moves:</span>
             <span className="dmap-status-val" style={{ color: pendingMoves > 0 ? '#80c8ff' : '#555' }}>
@@ -199,6 +209,9 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
       <div className="dmap-center">
         <div className="dmap-title-row">
           <span className="dmap-main-title">⚔ {player.name}&apos;s Dungeon</span>
+          <span style={{ fontFamily: 'var(--pixel)', fontSize: 9, color: '#b88cff', marginLeft: 10 }}>
+            Floor {floor}
+          </span>
         </div>
 
         {/* Map grid */}
@@ -283,8 +296,8 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
                   </span>
                 )}
 
-                {/* Room icon (only on explored, non-player cells) */}
-                {showIcon && !isPlayer && othersHere.length === 0 && (
+                {/* Room icon */}
+                {showIcon && othersHere.length === 0 && (
                   <span style={{
                     fontFamily: 'var(--pixel)',
                     fontSize,
@@ -364,6 +377,10 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
           <div className="dmap-guide-row">
             <span className="dmap-guide-icon">🌫</span>
             <span>Map resets at midnight</span>
+          </div>
+          <div className="dmap-guide-row">
+            <span className="dmap-guide-icon" style={{ color: '#b88cff' }}>↓</span>
+            <span>Stairs take you to the next floor — deeper = richer rewards</span>
           </div>
           <div className="dmap-guide-row">
             <span className="dmap-guide-icon">∞</span>

@@ -337,7 +337,8 @@ export default function App() {
       if (dungeonMap.activeMonster) {
         dungeonGoldBonus = dungeonMap.activeMonster.gold;
         dungeonKillName = dungeonMap.activeMonster.name;
-        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null } };
+        // Clearing a dungeon monster grants 1 move (it's a reward, not a tax)
+        newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
       } else {
         newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
       }
@@ -544,7 +545,8 @@ export default function App() {
     };
     if (event) {
       const goldTag = event.gold ? (goldDelta >= 0 ? ` +${event.gold}g` : ` -${event.gold}g`) : '';
-      showToast(`${player.name}: ${event.label}${goldTag}`);
+      const prefix = event.kind === 'stairs' ? '⬇ ' : '';
+      showToast(`${prefix}${player.name}: ${event.label}${goldTag}`);
     }
     await updateState(newState);
   }, [serverState, players, updateState, showToast]);

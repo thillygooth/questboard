@@ -2,21 +2,23 @@ import { MONSTERS, REWARDS, LOOT_TABLE, TITLES } from './data';
 
 // ── Dungeon map ────────────────────────────────────────────────────────────────
 
-function roomHash(dayKey, x, y) {
-  return `${dayKey}${x},${y}`.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0) >>> 0;
+function roomHash(dayKey, floor, x, y) {
+  return `${dayKey}_f${floor}_${x},${y}`.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0) >>> 0;
 }
 
-// Deterministic tile type for any coordinate — shared infinite procedural map (all players same world)
-export function getTileAt(dayKey, x, y) {
+// Deterministic tile type for any coordinate — shared world, per-floor seed
+// Distribution: corridor 24%, empty 20%, gold_s 14%, gold_l 9%, trap 8%, monster 7%, stairs 7%, chest 11%
+export function getTileAt(dayKey, floor, x, y) {
   if (x === 0 && y === 0) return 'start';
-  const h = roomHash(dayKey, x, y);
+  const h = roomHash(dayKey, floor, x, y);
   const r = (h >>> 0) / 0xffffffff;
-  if (r < 0.30) return 'corridor';
-  if (r < 0.52) return 'empty';
-  if (r < 0.64) return 'gold_s';
-  if (r < 0.72) return 'gold_l';
-  if (r < 0.80) return 'trap';
-  if (r < 0.91) return 'monster';
+  if (r < 0.24) return 'corridor';
+  if (r < 0.44) return 'empty';
+  if (r < 0.58) return 'gold_s';
+  if (r < 0.67) return 'gold_l';
+  if (r < 0.75) return 'trap';
+  if (r < 0.82) return 'monster';
+  if (r < 0.89) return 'stairs';
   return 'chest';
 }
 
@@ -27,45 +29,56 @@ export function initDungeonMap(dayKey) {
     pendingMoves: 0,
     activeMonster: null,
     dayKey,
+    floor: 1,
   };
 }
 
 export function dungeonMoveResult(mapState, dx, dy, dayKey, playerMode, luckLevel) {
   const [px, py] = mapState.pos;
   if (mapState.pendingMoves <= 0) return null;
+  const floor = mapState.floor || 1;
 
   const nx = px + dx;
   const ny = py + dy;
   const key = `${nx},${ny}`;
-  const roomType = getTileAt(dayKey, nx, ny);
+  const roomType = getTileAt(dayKey, floor, nx, ny);
   const alreadyVisited = mapState.explored.includes(key);
   const newExplored = alreadyVisited ? mapState.explored : [...mapState.explored, key];
+
+  // Depth bonus: +10% gold per 5 tiles from origin; floor bonus: +15% per floor
+  const chebDist = Math.max(Math.abs(nx), Math.abs(ny));
+  const depthMult  = 1 + 0.10 * Math.floor(chebDist / 5);
+  const floorMult  = 1 + 0.15 * (floor - 1);
+  const luckMult   = 1 + luckLevel * 1.2;
+  const totalMult  = depthMult * floorMult * luckMult;
 
   let goldDelta = 0;
   let newActiveMonster = null;
   let event = null;
+  let newFloor = floor;
+  let newPos = [nx, ny];
+  let finalExplored = newExplored;
 
   if (!alreadyVisited) {
-    const h = roomHash(dayKey, nx, ny);
-    const luckMult = 1 + luckLevel * 1.2;
+    const h = roomHash(dayKey, floor, nx, ny);
     switch (roomType) {
       case 'gold_s': {
-        goldDelta = Math.round((4 + (h % 7)) * luckMult);
+        goldDelta = Math.round((4 + (h % 7)) * totalMult);
         event = { kind: 'gold', label: 'Found coins', gold: goldDelta };
         break;
       }
       case 'gold_l': {
-        goldDelta = Math.round((14 + (h % 12)) * luckMult);
+        goldDelta = Math.round((14 + (h % 12)) * totalMult);
         event = { kind: 'gold', label: 'Found treasure', gold: goldDelta };
         break;
       }
       case 'chest': {
-        goldDelta = Math.round((28 + (h % 22)) * luckMult);
+        goldDelta = Math.round((28 + (h % 22)) * totalMult);
         event = { kind: 'chest', label: 'Treasure chest!', gold: goldDelta };
         break;
       }
       case 'trap': {
-        const raw = 3 + (h % 7);
+        const raw = 3 + (h % 7) + Math.floor(floor / 2);
         const reduced = Math.max(1, Math.round(raw * (1 - luckLevel * 0.6)));
         goldDelta = -reduced;
         event = { kind: 'trap', label: 'Triggered a trap!', gold: reduced };
@@ -79,16 +92,24 @@ export function dungeonMoveResult(mapState, dx, dy, dayKey, playerMode, luckLeve
         event = { kind: 'monster', label: `${m.name} lurks!` };
         break;
       }
+      case 'stairs': {
+        newFloor = floor + 1;
+        newPos = [0, 0];
+        finalExplored = ['0,0'];
+        event = { kind: 'stairs', label: `Descended to floor ${newFloor}` };
+        break;
+      }
       default: break;
     }
   }
 
   const newMap = {
     ...mapState,
-    pos: [nx, ny],
-    explored: newExplored,
+    pos: newPos,
+    explored: finalExplored,
     pendingMoves: mapState.pendingMoves - 1,
     activeMonster: newActiveMonster,
+    floor: newFloor,
   };
 
   return { newMap, goldDelta, event };
