@@ -530,7 +530,7 @@ function RewardSection({ players, enabledRewards, onToggle, rewardOverrides, onO
 }
 
 // ── Step 4: Reward selection (wizard) ─────────────────────────────────────────
-function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg }) {
+function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, confirmChores, onToggleConfirmChores }) {
   return (
     <div>
       <div style={S.h2}>Choose your rewards</div>
@@ -561,6 +561,20 @@ function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, 
           </button>
           <span style={{ color: '#5a5a7a', fontSize: 10 }}>Disable if background flickers</span>
         </div>
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ ...S.label, marginBottom: 10 }}>CHORE CONFIRMATION</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            style={{ ...(confirmChores ? S.btnPrimary : S.btn), padding: '6px 14px', fontSize: 11 }}
+            onClick={onToggleConfirmChores}
+          >
+            {confirmChores ? 'Confirm chores ON' : 'Confirm chores OFF'}
+          </button>
+          <span style={{ color: '#5a5a7a', fontSize: 10 }}>Require confirmation before completing chores</span>
+        </div>
+      </div>
+      <div>
         <div style={{ ...S.label, marginBottom: 8 }}>UI SCALE</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {UI_SCALES.map(s => (
@@ -713,7 +727,7 @@ function TabPowerUps({ powerUpSettings, onChange }) {
 }
 
 // ── Edit tab: Display ─────────────────────────────────────────────────────────
-function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg }) {
+function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, confirmChores, onToggleConfirmChores }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -738,6 +752,15 @@ function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animate
             {animatedBg ? '✓ Animated BG ON' : 'Animated BG OFF'}
           </button>
           <span style={{ color: '#5a5a7a', fontSize: 10 }}>Parallax dungeon background (disable if flickering on slower devices)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <button
+            style={{ ...(confirmChores ? S.btnPrimary : S.btn), padding: '6px 14px', fontSize: 11 }}
+            onClick={onToggleConfirmChores}
+          >
+            {confirmChores ? 'Confirm chores ON' : 'Confirm chores OFF'}
+          </button>
+          <span style={{ color: '#5a5a7a', fontSize: 10 }}>Require confirmation before completing chores</span>
         </div>
       </div>
       <div>
@@ -781,6 +804,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
   const [crtEnabled, setCrtEnabled] = useState(initialConfig?.crtEnabled ?? true);
   const [uiScale, setUiScale] = useState(initialConfig?.uiScale ?? 'mini');
   const [animatedBg, setAnimatedBg] = useState(initialConfig?.animatedBg ?? true);
+  const [confirmChores, setConfirmChores] = useState(initialConfig?.confirmChores ?? false);
   const [powerUpSettings, setPowerUpSettings] = useState(
     initialConfig?.powerUpSettings ?? { ...DEFAULT_POWER_UP_SETTINGS }
   );
@@ -852,6 +876,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
       crtEnabled,
       uiScale,
       animatedBg,
+      confirmChores,
       powerUpSettings,
     });
   }
@@ -924,6 +949,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
                 crtEnabled={crtEnabled} onToggleCrt={() => setCrtEnabled(v => !v)}
                 uiScale={uiScale} onChangeUiScale={setUiScale}
                 animatedBg={animatedBg} onToggleAnimatedBg={() => setAnimatedBg(v => !v)}
+                confirmChores={confirmChores} onToggleConfirmChores={() => setConfirmChores(v => !v)}
               />
             )}
           </div>
@@ -999,6 +1025,8 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
               onChangeUiScale={setUiScale}
               animatedBg={animatedBg}
               onToggleAnimatedBg={() => setAnimatedBg(v => !v)}
+              confirmChores={confirmChores}
+              onToggleConfirmChores={() => setConfirmChores(v => !v)}
             />
           )}
         </div>

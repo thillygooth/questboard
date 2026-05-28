@@ -300,6 +300,9 @@ export default function App() {
   const claimChore = useCallback(async (choreId) => {
     if (!selected || !serverState) return;
     const chore = activeChores.find(c => c.id === choreId);
+
+    // Optional confirmation to prevent accidental taps
+    if (config?.confirmChores && !confirm(`Complete ${chore.name}?`)) return;
     const storeKey = chore.freq === 'daily' ? 'dailyDone' : chore.freq === 'weekly' ? 'weeklyDone' : 'monthlyDone';
     const store = serverState[storeKey];
     const doneKey = choreDoneKey(chore, selected);
