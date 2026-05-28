@@ -110,7 +110,7 @@ function StepWelcome({ onNext }) {
       <div style={{ fontSize: 48, marginBottom: 8 }}>⚔</div>
       <div style={{ color: '#f5c870', fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>QUESTBOARD</div>
       <p style={{ ...S.p, maxWidth: 360, margin: '0 auto 24px' }}>
-        Turn household chores into a pixel art RPG adventure. Each family member gets a hero and fights a monster every day — complete chores to deal damage and earn gold.
+        Turn household chores into a pixel art RPG adventure. Each family member gets a hero and fights a monster every day  -  complete chores to deal damage and earn gold.
       </p>
       <button style={S.btnPrimary} onClick={onNext}>Start Setup →</button>
     </div>
@@ -222,7 +222,7 @@ function StepPlayerSetup({ player, playerIdx, total, onChange, onNext, onBack, o
     <div>
       <div style={S.h2}>
         Hero {playerIdx + 1} of {total}
-        {player.name && <span style={{ color: '#f5c870' }}> — {player.name}</span>}
+        {player.name && <span style={{ color: '#f5c870' }}>  -  {player.name}</span>}
       </div>
       <PlayerForm player={player} onChange={onChange} />
       {!canAdvance && (
@@ -342,7 +342,7 @@ function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOver
         <button
           onClick={e => { e.stopPropagation(); onOverride(chore.id, { ...ov, mode: mode === 'party' ? 'solo' : 'party' }); }}
           style={{ background: 'none', border: '1px solid #3a3a5e', color: mode === 'solo' ? '#f5a0c0' : '#8dc447', fontSize: 10, padding: '2px 6px', cursor: 'pointer', minWidth: 34 }}
-          title={mode === 'solo' ? '1 player only — tap to make shared' : 'All players share — tap to make solo'}
+          title={mode === 'solo' ? '1 player only  -  tap to make shared' : 'All players share  -  tap to make solo'}
         >{mode === 'solo' ? '1P' : 'ALL'}</button>
         <CycleBtn value={who} onClick={e => { e.stopPropagation(); const next = WHO_CYCLE[(WHO_CYCLE.indexOf(who) + 1) % WHO_CYCLE.length]; onOverride(chore.id, { ...ov, who: next }); }} />
         <button
@@ -530,7 +530,7 @@ function RewardSection({ players, enabledRewards, onToggle, rewardOverrides, onO
 }
 
 // ── Step 4: Reward selection (wizard) ─────────────────────────────────────────
-function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg }) {
+function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay }) {
   return (
     <div>
       <div style={S.h2}>Choose your rewards</div>
@@ -543,12 +543,24 @@ function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, 
       />
       <div style={{ marginTop: 20, borderTop: '1px solid #2a2a4a', paddingTop: 16 }}>
         <div style={{ ...S.label, marginBottom: 10 }}>DISPLAY</div>
+        <div style={{ ...S.label, marginBottom: 6, fontSize: 10, color: '#8a8aaa' }}>WEEK STARTS ON</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {[{ id: 1, label: 'Monday' }, { id: 0, label: 'Sunday' }].map(opt => (
+            <button
+              key={opt.id}
+              style={{ ...(weekStartDay === opt.id ? S.btnPrimary : S.btn), flex: 1, padding: '6px 4px', fontSize: 11 }}
+              onClick={() => onChangeWeekStartDay(opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <button
             style={{ ...(crtEnabled ? S.btnPrimary : S.btn), padding: '6px 14px', fontSize: 11 }}
             onClick={onToggleCrt}
           >
-            {crtEnabled ? '✓ CRT Scanlines ON' : 'CRT Scanlines OFF'}
+            {crtEnabled ? 'CRT Scanlines ON' : 'CRT Scanlines OFF'}
           </button>
           <span style={{ color: '#5a5a7a', fontSize: 10 }}>Retro CRT overlay effect</span>
         </div>
@@ -713,9 +725,24 @@ function TabPowerUps({ powerUpSettings, onChange }) {
 }
 
 // ── Edit tab: Display ─────────────────────────────────────────────────────────
-function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg }) {
+function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay }) {
   return (
     <div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ ...S.label, marginBottom: 10 }}>WEEK STARTS ON</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[{ id: 1, label: 'Monday' }, { id: 0, label: 'Sunday' }].map(opt => (
+            <button
+              key={opt.id}
+              style={{ ...(weekStartDay === opt.id ? S.btnPrimary : S.btn), flex: 1, padding: '8px 4px', fontSize: 11 }}
+              onClick={() => onChangeWeekStartDay(opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ color: '#5a5a7a', fontSize: 10, marginBottom: 16 }}>Controls when weekly chores and gold reset</div>
+      </div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ ...S.label, marginBottom: 10 }}>CRT EFFECT</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -781,6 +808,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
   const [crtEnabled, setCrtEnabled] = useState(initialConfig?.crtEnabled ?? true);
   const [uiScale, setUiScale] = useState(initialConfig?.uiScale ?? 'mini');
   const [animatedBg, setAnimatedBg] = useState(initialConfig?.animatedBg ?? true);
+  const [weekStartDay, setWeekStartDay] = useState(initialConfig?.weekStartDay ?? 1);
   const [powerUpSettings, setPowerUpSettings] = useState(
     initialConfig?.powerUpSettings ?? { ...DEFAULT_POWER_UP_SETTINGS }
   );
@@ -852,6 +880,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
       crtEnabled,
       uiScale,
       animatedBg,
+      weekStartDay,
       powerUpSettings,
     });
   }
@@ -924,6 +953,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
                 crtEnabled={crtEnabled} onToggleCrt={() => setCrtEnabled(v => !v)}
                 uiScale={uiScale} onChangeUiScale={setUiScale}
                 animatedBg={animatedBg} onToggleAnimatedBg={() => setAnimatedBg(v => !v)}
+                weekStartDay={weekStartDay} onChangeWeekStartDay={setWeekStartDay}
               />
             )}
           </div>
@@ -999,6 +1029,8 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
               onChangeUiScale={setUiScale}
               animatedBg={animatedBg}
               onToggleAnimatedBg={() => setAnimatedBg(v => !v)}
+              weekStartDay={weekStartDay}
+              onChangeWeekStartDay={setWeekStartDay}
             />
           )}
         </div>

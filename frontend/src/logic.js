@@ -202,10 +202,12 @@ export function todayKey() {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export function weekKey() {
+export function weekKey(weekStartDay = 1) {
   const d = new Date();
   const s = new Date(d);
-  s.setDate(d.getDate() - d.getDay());
+  const dow = d.getDay();
+  const diff = (dow - weekStartDay + 7) % 7;
+  s.setDate(d.getDate() - diff);
   return `${s.getFullYear()}-${s.getMonth()}-${s.getDate()}`;
 }
 

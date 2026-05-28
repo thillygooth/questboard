@@ -43,7 +43,7 @@ function makeDefaultState(players) {
   };
 }
 
-function applyAutoResets(raw, players) {
+function applyAutoResets(raw, players, weekStartDay = 1) {
   const state = { ...makeDefaultState(players), ...raw };
 
   // migrate old points field to gold
@@ -137,9 +137,9 @@ function applyAutoResets(raw, players) {
     changed = true;
   }
 
-  if (state.weekKey !== weekKey()) {
+  if (state.weekKey !== weekKey(weekStartDay)) {
     state.weeklyDone = {};
-    state.weekKey = weekKey();
+    state.weekKey = weekKey(weekStartDay);
     state.weeklyGold = Object.fromEntries(players.map(p => [p.id, 0]));
     changed = true;
   }
@@ -248,7 +248,7 @@ export default function App() {
 
         const stateRes = await fetch(`${API}/state`);
         const fetched = await stateRes.json();
-        const { state: after, changed, penaltyMsgs } = applyAutoResets(fetched, cfg.players);
+        const { state: after, changed, penaltyMsgs } = applyAutoResets(fetched, cfg.players, cfg.weekStartDay ?? 1);
 
         if (changed) {
           await fetch(`${API}/state`, {
@@ -273,7 +273,7 @@ export default function App() {
     try {
       const res = await fetch(`${API}/state`);
       const fetched = await res.json();
-      const { state: after, changed } = applyAutoResets(fetched, players);
+      const { state: after, changed } = applyAutoResets(fetched, players, config?.weekStartDay ?? 1);
       if (changed) await saveState(after);
       setServerState(after);
     } catch (e) {
@@ -677,7 +677,7 @@ export default function App() {
 
   const handleSetupComplete = useCallback(async (wizardConfig) => {
     const freshState = makeDefaultState(wizardConfig.players);
-    const { state: after } = applyAutoResets(freshState, wizardConfig.players);
+    const { state: after } = applyAutoResets(freshState, wizardConfig.players, wizardConfig.weekStartDay ?? 1);
     await Promise.all([
       fetch(`${API}/config`, {
         method: 'POST',
