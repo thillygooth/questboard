@@ -303,7 +303,7 @@ function CustomForm({ form, setForm, onSubmit, onCancel, extraFields }) {
 // ── Shared: chore list (wizard step + Quests tab) ─────────────────────────────
 function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOverride, customChores, onAddCustom, onRemoveCustom }) {
   const [addingCustom, setAddingCustom] = useState(false);
-  const [form, setForm] = useState({ name: '', icon: '⭐', pts: 2, who: 'all', freq: 'daily' });
+  const [form, setForm] = useState({ name: '', icon: '⭐', pts: 2, who: 'all', freq: 'daily', mode: 'party' });
 
   const modes = new Set(players.map(p => p.mode));
   const daily   = ALL_CHORES.filter(c => c.freq === 'daily');
@@ -317,7 +317,7 @@ function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOver
   function submitCustom() {
     if (!form.name.trim()) return;
     onAddCustom({ ...form, id: `custom_${Date.now()}`, name: form.name.trim() });
-    setForm({ name: '', icon: '⭐', pts: 2, who: 'all', freq: 'daily' });
+    setForm({ name: '', icon: '⭐', pts: 2, who: 'all', freq: 'daily', mode: 'party' });
     setAddingCustom(false);
   }
 
@@ -398,6 +398,10 @@ function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOver
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
+              </select>
+              <select style={{ ...S.input, flex: 1 }} value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}>
+                <option value="party">ALL (shared)</option>
+                <option value="solo">1P (per player)</option>
               </select>
             </>
           }

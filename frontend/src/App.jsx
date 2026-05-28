@@ -206,7 +206,7 @@ export default function App() {
     const base = ALL_CHORES
       .filter(c => enabled.has(c.id))
       .map(c => overrides[c.id] ? { ...c, ...overrides[c.id] } : c);
-    return [...base, ...(config.customChores ?? [])];
+    return [...base, ...(config.customChores ?? []).map(c => overrides[c.id] ? { ...c, ...overrides[c.id] } : c)];
   }, [config]);
 
   const bonusChoreId = useMemo(() => {

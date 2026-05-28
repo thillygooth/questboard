@@ -23,6 +23,8 @@ const TYPE_TILE = {
   gold:     55,
   penalty: 123,
   reward:   41,
+  badge:    29,
+  loot:     72,
 };
 
 export default function HistoryTab({ history, players, weeklyGold = {} }) {
@@ -60,8 +62,14 @@ export default function HistoryTab({ history, players, weeklyGold = {} }) {
         <div className="redeemed-list">
           {hist.map((h, i) => {
             const tile = TYPE_TILE[h.type] ?? 118;
-            const action = h.type === 'chore' ? 'completed' : h.type === 'penalty' ? 'attacked by' : 'slew';
-            const pts = h.type === 'chore' ? `(+${h.pts} dmg${h.crit ? ' CRIT' : ''})` : h.type === 'penalty' ? `(-${h.pts} gold)` : `(+${h.pts} gold${h.lucky ? ' LUCKY' : ''})`;
+            let action, pts;
+            switch (h.type) {
+              case 'chore':   action = 'completed'; pts = `(+${h.pts} dmg${h.crit ? ' CRIT' : ''})`; break;
+              case 'penalty': action = 'attacked by'; pts = `(-${h.pts} gold)`; break;
+              case 'badge':   action = 'earned'; pts = h.icon || '🏅'; break;
+              case 'loot':    action = 'found'; pts = h.pts ? `(+${h.pts} gold)` : (h.xp ? `(+${h.xp} XP)` : ''); break;
+              default:        action = 'slew'; pts = h.pts != null ? `(+${h.pts} gold${h.lucky ? ' LUCKY' : ''})` : ''; break;
+            }
             return (
               <div key={i} className="redeemed-item">
                 <TileSprite tile={tile} display={14} />

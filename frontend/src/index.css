@@ -98,6 +98,11 @@ body.crt::after {
 .torch-wrap.torch-left  { left: 14px; }
 .torch-wrap.torch-right { right: 14px; }
 
+/* Hide torches on screens where they overlap player cards (tablets, small laptops) */
+@media (max-width: 1400px) {
+  .torch-wrap { display: none; }
+}
+
 .torch-sprite {
   width: 48px;
   height: 96px;
