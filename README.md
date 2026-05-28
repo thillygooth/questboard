@@ -148,7 +148,7 @@ The dev server proxies `/api/*` to the backend automatically.
 
 ## License
 
-[MIT](LICENSE) — free to use, fork, and share.
+[CC BY-NC 4.0](LICENSE) — free to share and adapt for non-commercial purposes with attribution. Commercial use is prohibited.
 
 Sprite assets from [OpenGameArt.org](https://opengameart.org) under CC-BY / CC0 licenses. Font: [Pixelated Elegance](https://www.fontspace.com/pixelated-elegance-font-f126145) by GGBotNet (CC0).
 
