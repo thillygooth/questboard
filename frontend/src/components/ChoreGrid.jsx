@@ -1,5 +1,5 @@
 import React from 'react';
-import { getChoresFor } from '../logic';
+import { getChoresFor, choreDoneKey, isChoreDoneForPlayer, getChoreClaimant } from '../logic';
 import TileSprite from './TileSprite';
 
 function dmgClass(p) {
@@ -13,9 +13,9 @@ function dmgClass(p) {
 
 function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selectedPlayerId, onClaim, onUnclaim, bonusChoreId }) {
   const store = chore.freq === 'daily' ? dailyDone : chore.freq === 'weekly' ? weeklyDone : monthlyDone;
-  const claimedById = store[chore.id];
-  const isDone = !!claimedById;
-  const dp = isDone ? players.find(p => p.id === claimedById) : null;
+  const isDone = isChoreDoneForPlayer(store, chore, selectedPlayerId);
+  const claimedById = getChoreClaimant(store, chore, selectedPlayerId);
+  const dp = claimedById ? players.find(p => p.id === claimedById) : null;
   const canUndo = isDone && claimedById === selectedPlayerId;
 
   function handleClick() {
@@ -40,7 +40,7 @@ function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selecte
           {chore.pts}
         </span>
       </div>
-      <div className="chore-name">{chore.name}</div>
+      <div className="chore-name">{chore.name}{chore.mode === 'solo' && <span className="solo-badge">1P</span>}</div>
       {isDone && (
         <div className="done-by">{canUndo ? '↩ undo' : `✔ ${dp ? dp.name : 'done'}`}</div>
       )}

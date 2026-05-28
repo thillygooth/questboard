@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS } from './data';
-import { todayKey, weekKey, monthKey, dateSeededMonster, randomMonster, resolveMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, initDungeonMap, dungeonMoveResult, generateFloor } from './logic';
+import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS, POWER_UPS, OVERKILL_CHARGE_GOAL, POWER_TOKEN_CAP, POWER_TOKEN_CHOICES } from './data';
+import { todayKey, weekKey, monthKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, getTitleForBadge, isPowerUpActive, getActivePowerUps, cleanExpiredPowerUps, checkPowerUpTriggers, choreDoneKey, isChoreDoneForPlayer, initDungeonMap, dungeonMoveResult, generateFloor } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
@@ -25,6 +25,7 @@ function makeDefaultState(players) {
     weeklyGold: { ...zeros },
     badges: Object.fromEntries(players.map(p => [p.id, []])),
     badgeProgress: Object.fromEntries(players.map(p => [p.id, { monsters_killed: 0, rewards_redeemed: 0, lucky_count: 0, penalty_free_days: 0 }])),
+    selectedTitles: {},
     dailyDone: {},
     weeklyDone: {},
     monthlyDone: {},
@@ -33,9 +34,11 @@ function makeDefaultState(players) {
     monthKey: '',
     history: [],
     monsterDamage: {},
-    monsterBaseline: {},
     monsterPenalties: {},
-    assignedMonsters: {},
+    damageLog: {},
+    overkillCharge: { ...zeros },
+    storedPowerTokens: { ...zeros },
+    activePowerUps: {},
     dungeonMaps: {},
   };
 }
@@ -48,13 +51,6 @@ function applyAutoResets(raw, players) {
 
   let changed = false;
   const penaltyMsgs = [];
-
-  if (!state.assignedMonsters || Object.keys(state.assignedMonsters).length === 0) {
-    const monsters = {};
-    players.forEach(pl => { monsters[pl.id] = randomMonster(pl); });
-    state.assignedMonsters = monsters;
-    changed = true;
-  }
 
   if (state.todayKey !== todayKey()) {
     const yKey = state.todayKey;
@@ -70,7 +66,8 @@ function applyAutoResets(raw, players) {
         } else {
           newStreaks[pl.id] = 0;
           const pKey = `${pl.id}_${yKey}`;
-          if (!(state.monsterPenalties || {})[pKey]) {
+          const shieldActive = isPowerUpActive(state.activePowerUps, pl.id, 'shield_aura');
+          if (!shieldActive && !(state.monsterPenalties || {})[pKey]) {
             state.gold = { ...state.gold, [pl.id]: Math.max(0, (state.gold[pl.id] || 0) - m.atk) };
             state.monsterPenalties = { ...state.monsterPenalties, [pKey]: true };
             state.history = [...(state.history || []), { type: 'penalty', player: pl.name, name: m.name, pts: m.atk }];
@@ -81,7 +78,7 @@ function applyAutoResets(raw, players) {
       });
     }
 
-    // Track penalty-free days and check untouchable badge
+    // Track penalty-free days and check badges
     players.forEach(pl => {
       const prog = state.badgeProgress?.[pl.id] || { monsters_killed: 0, rewards_redeemed: 0, lucky_count: 0, penalty_free_days: 0 };
       const hadPenalty = penaltyMsgs.some(msg => msg.includes(pl.name));
@@ -102,13 +99,29 @@ function applyAutoResets(raw, players) {
       }
     });
 
-    const newMonsters = {};
-    players.forEach(pl => { newMonsters[pl.id] = randomMonster(pl); });
-    state.assignedMonsters = newMonsters;
+    // Auto-activate stored power tokens at day reset
+    players.forEach(pl => {
+      const tokens = state.storedPowerTokens?.[pl.id] || 0;
+      if (tokens > 0) {
+        const rewardId = POWER_TOKEN_CHOICES[Math.floor(Math.random() * POWER_TOKEN_CHOICES.length)];
+        const pu = POWER_UPS.find(p => p.id === rewardId);
+        if (pu) {
+          const existing = state.activePowerUps?.[pl.id] || [];
+          const activated = { id: rewardId, activatedAt: Date.now(), durationHours: pu.effectType === 'instant' ? 0 : 24 };
+          state.activePowerUps = { ...(state.activePowerUps || {}), [pl.id]: [...existing, activated] };
+          state.storedPowerTokens = { ...(state.storedPowerTokens || {}), [pl.id]: tokens - 1 };
+        }
+      }
+    });
+
+    // Clean up expired power-ups
+    state.activePowerUps = cleanExpiredPowerUps(state.activePowerUps);
+
     state.streaks = newStreaks;
     state.dailyDone = {};
     state.todayKey = todayKey();
-    state.monsterBaseline = {};
+    state.damageLog = {};
+    state.overkillCharge = { ...zeros, ...(state.overkillCharge || {}) };
     // Dungeon persists — just grant daily bonus moves instead of resetting
     if (!state.dungeonMaps) state.dungeonMaps = {};
     players.forEach(pl => {
@@ -148,6 +161,12 @@ function applyAutoResets(raw, players) {
   });
 
   return { state, changed, penaltyMsgs };
+}
+
+// Pick a projected overkill reward (deterministic per player+day)
+function getProjectedOverkillReward(playerId) {
+  const hash = `${playerId}${todayKey()}`.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return POWER_TOKEN_CHOICES[hash % POWER_TOKEN_CHOICES.length];
 }
 
 export default function App() {
@@ -281,14 +300,14 @@ export default function App() {
     const chore = activeChores.find(c => c.id === choreId);
     const storeKey = chore.freq === 'daily' ? 'dailyDone' : chore.freq === 'weekly' ? 'weeklyDone' : 'monthlyDone';
     const store = serverState[storeKey];
-    if (store[choreId]) return;
+    const doneKey = choreDoneKey(chore, selected);
+    if (store[doneKey]) return;
 
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
-    const m = resolveMonster(serverState.assignedMonsters?.[selected], player) || dateSeededMonster(player, tKey);
+    const m = dateSeededMonster(player, tKey);
     const totalDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
-    const baseline = (serverState.monsterBaseline?.[selected]?.[tKey]) || 0;
-    const prevDmgOnCurrent = totalDmg - baseline;
+    const monsterAlreadyDefeated = totalDmg >= m.maxHP;
 
     // Combo tracking (in-memory only, not persisted)
     const now = Date.now();
@@ -304,32 +323,69 @@ export default function App() {
 
     const playerXp = serverState.xp?.[selected] || 0;
     const { level } = getLevelFromXP(playerXp);
-    const isCrit = prevDmgOnCurrent < m.maxHP && Math.random() < critChanceForLevel(level);
+
+    const hasDoubleDamage = isPowerUpActive(serverState.activePowerUps, selected, 'double_damage');
     const isBonus = choreId === bonusChoreId;
+    const isCrit = !monsterAlreadyDefeated && Math.random() < critChanceForLevel(level);
     const comboMult = Math.min(2.5, 1 + (combo - 1) * 0.15);
     const basePts = isBonus ? chore.pts * 2 : chore.pts;
-    const actualPts = Math.round((isCrit ? basePts * 2 : basePts) * comboMult);
+    let actualPts = Math.round((isCrit ? basePts * 2 : basePts) * comboMult);
+    if (hasDoubleDamage) actualPts = actualPts * 2;
 
-    const newDmgOnCurrent = prevDmgOnCurrent + actualPts;
-    const hp = Math.max(0, m.maxHP - newDmgOnCurrent);
-    const justKilled = hp === 0 && prevDmgOnCurrent < m.maxHP;
+    // ── Overkill mode: monster already defeated, charge the bar ──────────────
+    if (monsterAlreadyDefeated) {
+      const prevCharge = serverState.overkillCharge?.[selected] || 0;
+      const newCharge = prevCharge + 1;
+      const tokenEarned = newCharge >= OVERKILL_CHARGE_GOAL;
+      const finalCharge = tokenEarned ? newCharge - OVERKILL_CHARGE_GOAL : newCharge;
+      const prevTokens = serverState.storedPowerTokens?.[selected] || 0;
+      const newTokens = tokenEarned ? Math.min(POWER_TOKEN_CAP, prevTokens + 1) : prevTokens;
+
+      const newState = {
+        ...serverState,
+        [storeKey]: { ...store, [doneKey]: selected },
+        overkillCharge: { ...(serverState.overkillCharge || {}), [selected]: finalCharge },
+        storedPowerTokens: { ...(serverState.storedPowerTokens || {}), [selected]: newTokens },
+        history: [...(serverState.history || []), { type: 'chore', player: player.name, name: chore.name, pts: actualPts, overkill: true }],
+        damageLog: {
+          ...(serverState.damageLog || {}),
+          [selected]: { ...((serverState.damageLog || {})[selected] || {}), [doneKey]: { pts: actualPts, overkill: true } },
+        },
+      };
+      await updateState(newState);
+      playHit(chore.pts);
+      showToast(tokenEarned
+        ? `${player.name}: ⚡ OVERKILL! Power Token banked!`
+        : `${player.name}: ⚡ Overkill! ${finalCharge}/${OVERKILL_CHARGE_GOAL} charged`);
+      return;
+    }
+
+    // ── Normal hit ────────────────────────────────────────────────────────────
+    const newTotalDmg = totalDmg + actualPts;
+    const hp = Math.max(0, m.maxHP - newTotalDmg);
+    const justKilled = hp === 0;
 
     const currentStreak = serverState.streaks?.[selected] || 0;
     const sMultiplier = streakMultiplier(currentStreak);
     const prestigeBonus = 1 + (serverState.prestige?.[selected] || 0) * 0.05;
+
+    const hasTreasureMagnet = isPowerUpActive(serverState.activePowerUps, selected, 'treasure_magnet');
+    const hasGoldRush = isPowerUpActive(serverState.activePowerUps, selected, 'gold_rush');
+    const dropMultiplier = hasTreasureMagnet ? 3 : 1;
+    const goldMultiplier = hasGoldRush ? 2 : 1;
 
     const xpGain = justKilled ? Math.max(2, Math.ceil(m.gold / 3)) : 0;
     const newPlayerXp = playerXp + xpGain;
     const { level: newLevel } = getLevelFromXP(newPlayerXp);
     const leveledUp = justKilled && newLevel > level;
 
-    const luck = luckForLevel(level);
-    const isLucky = justKilled && Math.random() < luck;
+    const luck = luckForLevel(level) * (hasTreasureMagnet ? 3 : 1);
+    const isLucky = justKilled && Math.random() < Math.min(1, luck);
     const luckyGold = isLucky ? Math.ceil(m.gold * 0.5) : 0;
-    const baseKillGold = justKilled ? Math.round(m.gold * sMultiplier * prestigeBonus) : 0;
+    const baseKillGold = justKilled ? Math.round(m.gold * sMultiplier * prestigeBonus * goldMultiplier) : 0;
     const totalGoldGain = baseKillGold + luckyGold;
 
-    const loot = rollLoot();
+    const loot = rollLoot(dropMultiplier);
     const lootGold = loot?.gold ?? 0;
     const lootXp   = loot?.xp   ?? 0;
 
@@ -341,36 +397,26 @@ export default function App() {
     let newDungeonMaps = serverState.dungeonMaps ?? {};
     if (dungeonMap) {
       if (dungeonMap.activeMonster && (dungeonMap.activeMonster.currentHP ?? 0) > 0) {
-        // Multi-hit dungeon combat: deal chore pts as damage
         const dm = dungeonMap.activeMonster;
         const newMonsterHP = Math.max(0, dm.currentHP - actualPts);
         if (newMonsterHP === 0) {
-          // Dungeon monster defeated!
           dungeonGoldBonus = dm.gold;
           dungeonKillName = dm.name;
-          // Mark tile as cleared in grid
           const newGrid = dungeonMap.grid.map(row => [...row]);
           if (dm.pos) newGrid[dm.pos[1]][dm.pos[0]] = 'floor';
           newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, grid: newGrid, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 3 } };
         } else {
-          // Still fighting — 1 move for engaging in combat
           dungeonFightMsg = `⚔ ${dm.name} HP:${newMonsterHP}/${dm.maxHP}`;
           newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: { ...dm, currentHP: newMonsterHP }, pendingMoves: (dungeonMap.pendingMoves || 0) + 1 } };
         }
       } else if (dungeonMap.activeMonster) {
-        // Old-style monster (no currentHP field) — instant clear for migration
         dungeonGoldBonus = dungeonMap.activeMonster.gold ?? 0;
         dungeonKillName = dungeonMap.activeMonster.name;
         newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, activeMonster: null, pendingMoves: (dungeonMap.pendingMoves || 0) + 3 } };
       } else {
-        // Regular chore: +2 moves
         newDungeonMaps = { ...newDungeonMaps, [selected]: { ...dungeonMap, pendingMoves: (dungeonMap.pendingMoves || 0) + 2 } };
       }
     }
-
-    const newTotalDmg = totalDmg + actualPts;
-    const newBaseline = justKilled ? newTotalDmg : baseline;
-    const newMonster  = justKilled ? randomMonster(player) : null;
 
     const prog = serverState.badgeProgress?.[selected] || { monsters_killed: 0, rewards_redeemed: 0, lucky_count: 0, penalty_free_days: 0 };
     const newProg = {
@@ -379,7 +425,7 @@ export default function App() {
       lucky_count:     isLucky    ? prog.lucky_count + 1     : prog.lucky_count,
     };
     const currentBadges = serverState.badges?.[selected] || [];
-    const newGoldTotal   = (serverState.gold[selected] || 0) + totalGoldGain + lootGold + dungeonGoldBonus;
+    const newGoldTotal = (serverState.gold[selected] || 0) + totalGoldGain + lootGold + dungeonGoldBonus;
     const newBadgeIds = checkNewBadges(currentBadges, {
       streak: currentStreak,
       gold: newGoldTotal,
@@ -389,10 +435,7 @@ export default function App() {
       penaltyFreeDays: prog.penalty_free_days,
     });
 
-    const newXpMap = {
-      ...(serverState.xp || {}),
-      [selected]: newPlayerXp + lootXp,
-    };
+    const newXpMap = { ...(serverState.xp || {}), [selected]: newPlayerXp + lootXp };
 
     const historyEntries = [
       { type: 'chore', player: player.name, name: chore.name, pts: actualPts, crit: isCrit, combo: combo > 1 ? combo : undefined, bonus: isBonus || undefined },
@@ -403,7 +446,7 @@ export default function App() {
 
     const newState = {
       ...serverState,
-      [storeKey]: { ...store, [choreId]: selected },
+      [storeKey]: { ...store, [doneKey]: selected },
       gold: { ...serverState.gold, [selected]: newGoldTotal },
       xp: newXpMap,
       weeklyGold: { ...(serverState.weeklyGold || {}), [selected]: (serverState.weeklyGold?.[selected] || 0) + totalGoldGain + lootGold },
@@ -414,13 +457,10 @@ export default function App() {
         ...serverState.monsterDamage,
         [selected]: { ...(serverState.monsterDamage?.[selected] || {}), [tKey]: newTotalDmg },
       },
-      monsterBaseline: justKilled ? {
-        ...serverState.monsterBaseline,
-        [selected]: { ...(serverState.monsterBaseline?.[selected] || {}), [tKey]: newBaseline },
-      } : serverState.monsterBaseline,
-      assignedMonsters: justKilled
-        ? { ...serverState.assignedMonsters, [selected]: newMonster }
-        : serverState.assignedMonsters,
+      damageLog: {
+        ...(serverState.damageLog || {}),
+        [selected]: { ...((serverState.damageLog || {})[selected] || {}), [doneKey]: { pts: actualPts, overkill: false } },
+      },
       dungeonMaps: newDungeonMaps,
     };
 
@@ -430,19 +470,23 @@ export default function App() {
     if (isCrit && !justKilled) playCrit();
     else if (justKilled) {
       playKill();
-      const allDone = players.every(pl => (newState.monsterBaseline?.[pl.id]?.[tKey] || 0) > 0);
+      const allDone = players.every(pl => {
+        const plM = dateSeededMonster(pl, tKey);
+        const plDmg = (newState.monsterDamage?.[pl.id]?.[tKey]) || 0;
+        return plDmg >= plM.maxHP;
+      });
       if (allDone) setTimeout(() => { playFanfare(); setCelebration(true); }, 600);
     } else {
       playHit(chore.pts);
     }
 
-    const comboTag  = combo > 1            ? ` x${combo} COMBO!`                           : '';
-    const critTag   = isCrit               ? ' CRIT!'                                       : '';
-    const bonusTag  = isBonus              ? ' BONUS!'                                      : '';
-    const levelTag  = leveledUp            ? ` LVL UP ${newLevel}!`                         : '';
-    const luckyTag  = isLucky              ? ` +${luckyGold} lucky gold!`                   : '';
+    const comboTag  = combo > 1            ? ` x${combo} COMBO!`                                   : '';
+    const critTag   = isCrit               ? ' CRIT!'                                               : '';
+    const bonusTag  = isBonus              ? ' BONUS!'                                              : '';
+    const levelTag  = leveledUp            ? ` LVL UP ${newLevel}!`                                 : '';
+    const luckyTag  = isLucky              ? ` +${luckyGold} lucky gold!`                           : '';
     const streakTag = justKilled && currentStreak >= 3 ? ` ${currentStreak}-day streak x${sMultiplier}!` : '';
-    const lootTag   = loot                 ? ` ${loot.icon} Found ${loot.name}!`            : '';
+    const lootTag   = loot                 ? ` ${loot.icon} Found ${loot.name}!`                    : '';
     const badgeTag  = newBadgeIds.length   ? ` 🏅 ${BADGES.find(b => b.id === newBadgeIds[0])?.name}!` : '';
     const dungeonTag = dungeonGoldBonus > 0 ? ` [☠ ${dungeonKillName} +${dungeonGoldBonus}g]` : dungeonFightMsg ? ` [${dungeonFightMsg}]` : '';
 
@@ -457,27 +501,46 @@ export default function App() {
     const chore = activeChores.find(c => c.id === choreId);
     const storeKey = chore.freq === 'daily' ? 'dailyDone' : chore.freq === 'weekly' ? 'weeklyDone' : 'monthlyDone';
     const store = serverState[storeKey];
-    const claimedBy = store[choreId];
+    const doneKey = choreDoneKey(chore, selected);
+    const claimedBy = store[doneKey];
     if (!claimedBy || claimedBy !== selected) return;
 
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
-    const baseline = (serverState.monsterBaseline?.[selected]?.[tKey]) || 0;
-    const prevDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
 
-    if (prevDmg - chore.pts < baseline) {
-      showToast("Can't undo past a monster kill");
+    // Look up actual pts from damageLog (handles crit/combo accurately)
+    const logEntry = serverState.damageLog?.[selected]?.[doneKey];
+    const wasOverkill = typeof logEntry === 'object' ? !!logEntry.overkill : false;
+    const actualPts = typeof logEntry === 'object' ? logEntry.pts : (logEntry ?? chore.pts);
+
+    const updatedStore = { ...store };
+    delete updatedStore[doneKey];
+
+    const newDamageLog = { ...(serverState.damageLog || {}) };
+    if (newDamageLog[selected]) {
+      newDamageLog[selected] = { ...newDamageLog[selected] };
+      delete newDamageLog[selected][doneKey];
+    }
+
+    if (wasOverkill) {
+      // Revert overkill charge (can't revert earned tokens)
+      const prevCharge = serverState.overkillCharge?.[selected] || 0;
+      const newState = {
+        ...serverState,
+        [storeKey]: updatedStore,
+        overkillCharge: { ...(serverState.overkillCharge || {}), [selected]: Math.max(0, prevCharge - 1) },
+        damageLog: newDamageLog,
+      };
+      await updateState(newState);
+      playUndo();
+      showToast(`${player.name} undid: ${chore.name}`);
       return;
     }
 
-    const m = resolveMonster(serverState.assignedMonsters?.[selected], player) || dateSeededMonster(player, tKey);
-    const prevDmgOnCurrent = prevDmg - baseline;
-    const newDmgOnCurrent = Math.max(0, prevDmgOnCurrent - chore.pts);
-    const wasKillShot = prevDmgOnCurrent >= m.maxHP && newDmgOnCurrent < m.maxHP;
-    const newDmg = prevDmg - chore.pts;
-
-    const updatedStore = { ...store };
-    delete updatedStore[choreId];
+    const m = dateSeededMonster(player, tKey);
+    const prevDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
+    const newDmg = Math.max(0, prevDmg - actualPts);
+    const wasKillShot = prevDmg >= m.maxHP && newDmg < m.maxHP;
 
     const newState = {
       ...serverState,
@@ -489,6 +552,7 @@ export default function App() {
         ...serverState.monsterDamage,
         [selected]: { ...(serverState.monsterDamage?.[selected] || {}), [tKey]: newDmg },
       },
+      damageLog: newDamageLog,
     };
 
     await updateState(newState);
@@ -551,6 +615,15 @@ export default function App() {
     showToast(`${player.name} prestiged! +${currentPrestige * 5}% gold bonus forever! ⭐`);
   }, [serverState, players, updateState, showToast]);
 
+  const handleSelectTitle = useCallback(async (playerId, badgeId) => {
+    if (!serverState) return;
+    const newState = {
+      ...serverState,
+      selectedTitles: { ...(serverState.selectedTitles || {}), [playerId]: badgeId },
+    };
+    await updateState(newState);
+  }, [serverState, updateState]);
+
   const handleDungeonMove = useCallback(async (playerId, dx, dy) => {
     if (!serverState) return;
     const player = players.find(p => p.id === playerId);
@@ -578,8 +651,6 @@ export default function App() {
 
   const resetWeek = useCallback(async () => {
     if (!confirm('Reset chores, gold, and monsters? History will be kept.')) return;
-    const freshMonsters = {};
-    players.forEach(pl => { freshMonsters[pl.id] = randomMonster(pl); });
     const zeros = Object.fromEntries(players.map(p => [p.id, 0]));
     const newState = {
       ...serverState,
@@ -590,7 +661,10 @@ export default function App() {
       monsterDamage: {},
       monsterPenalties: {},
       streaks: { ...zeros },
-      assignedMonsters: freshMonsters,
+      damageLog: {},
+      overkillCharge: { ...zeros },
+      storedPowerTokens: { ...zeros },
+      activePowerUps: {},
     };
     await updateState(newState);
   }, [players, serverState, updateState]);
@@ -610,7 +684,6 @@ export default function App() {
         body: JSON.stringify(after),
       }),
     ]);
-    // Set all three together so React batches them into one render
     setConfig(wizardConfig);
     setServerState(after);
     setNeedsSetup(false);
@@ -625,18 +698,13 @@ export default function App() {
       ...Object.fromEntries(Object.entries(obj || {}).filter(([id]) => newIds.has(id))),
     });
 
-    const newMonsters = { ...(serverState.assignedMonsters || {}) };
-    wizardConfig.players.forEach(pl => {
-      if (!newMonsters[pl.id]) newMonsters[pl.id] = randomMonster(pl);
-    });
-    Object.keys(newMonsters).forEach(id => { if (!newIds.has(id)) delete newMonsters[id]; });
-
     const mergedState = {
       ...serverState,
       gold: keep(serverState.gold),
       xp: keep(serverState.xp),
       streaks: keep(serverState.streaks),
-      assignedMonsters: newMonsters,
+      overkillCharge: keep(serverState.overkillCharge || {}),
+      storedPowerTokens: keep(serverState.storedPowerTokens || {}),
     };
 
     await Promise.all([
@@ -662,6 +730,13 @@ export default function App() {
     const enabled = config?.crtEnabled ?? true;
     document.body.classList.toggle('crt', enabled);
   }, [config?.crtEnabled]);
+
+  // Apply UI scale classes on body
+  useEffect(() => {
+    document.body.classList.remove('scale-heroic', 'scale-epic');
+    if (config?.uiScale === 'heroic') document.body.classList.add('scale-heroic');
+    else if (config?.uiScale === 'epic') document.body.classList.add('scale-epic');
+  }, [config?.uiScale]);
 
   if (loading) {
     return (
@@ -731,13 +806,16 @@ export default function App() {
             isSelected={selected === p.id}
             onClick={() => selectPlayer(p.id)}
             monsterDamage={state.monsterDamage}
-            monsterBaseline={state.monsterBaseline}
             lastHit={lastHits[p.id]}
             streak={state.streaks?.[p.id] || 0}
-            monster={state.assignedMonsters?.[p.id]}
             prestige={state.prestige?.[p.id] || 0}
             badges={state.badges?.[p.id] || []}
-            weeklyGold={state.weeklyGold?.[p.id] || 0}
+            selectedTitleBadge={state.selectedTitles?.[p.id]}
+            onSelectTitle={handleSelectTitle}
+            activePowerUps={getActivePowerUps(state.activePowerUps, p.id)}
+            overkillCharge={state.overkillCharge?.[p.id] || 0}
+            storedPowerTokens={state.storedPowerTokens?.[p.id] || 0}
+            projectedOverkillRewardId={getProjectedOverkillReward(p.id)}
             onPrestige={handlePrestige}
           />
         ))}

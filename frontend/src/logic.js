@@ -1,4 +1,4 @@
-import { MONSTERS, REWARDS, LOOT_TABLE, TITLES } from './data';
+import { MONSTERS, REWARDS, LOOT_TABLE, TITLES, POWER_UPS } from './data';
 
 // ── Dungeon map ────────────────────────────────────────────────────────────────
 
@@ -287,8 +287,8 @@ export function dailyBonusChoreId(choreIds, dateKey) {
   return choreIds[hash % choreIds.length];
 }
 
-export function rollLoot() {
-  if (Math.random() > 0.10) return null;
+export function rollLoot(dropMultiplier = 1) {
+  if (Math.random() > Math.min(1, 0.10 * dropMultiplier)) return null;
   return LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
 }
 
@@ -298,6 +298,73 @@ export function getPlayerTitle(playerBadgeIds) {
     if (set.has(badge)) return title;
   }
   return null;
+}
+
+export function getTitleForBadge(badgeId) {
+  return TITLES.find(t => t.badge === badgeId)?.title ?? null;
+}
+
+// ── Solo/party chore helpers ───────────────────────────────────────────────────
+// Solo chores use a compound key "choreId:playerId" so each player tracks independently.
+
+export function choreDoneKey(chore, playerId) {
+  return (chore.mode === 'solo') ? `${chore.id}:${playerId}` : chore.id;
+}
+
+export function isChoreClaimedBy(store, chore, playerId) {
+  if (chore.mode === 'solo') return store[`${chore.id}:${playerId}`] === playerId;
+  return !!store[chore.id];
+}
+
+export function isChoreDoneForPlayer(store, chore, playerId) {
+  if (chore.mode === 'solo') return store[`${chore.id}:${playerId}`] === playerId;
+  return !!store[chore.id];
+}
+
+export function getChoreClaimant(store, chore, playerId) {
+  if (chore.mode === 'solo') return store[`${chore.id}:${playerId}`] || null;
+  return store[chore.id] || null;
+}
+
+// ── Power-ups ─────────────────────────────────────────────────────────────────
+
+export function isPowerUpActive(activePowerUps, playerId, powerUpId) {
+  const list = activePowerUps?.[playerId] || [];
+  const now = Date.now();
+  return list.some(p => p.id === powerUpId && (p.durationHours === 0 || now < p.activatedAt + p.durationHours * 3600000));
+}
+
+export function getActivePowerUps(activePowerUps, playerId) {
+  const list = activePowerUps?.[playerId] || [];
+  const now = Date.now();
+  return list.filter(p => p.durationHours === 0 || now < p.activatedAt + p.durationHours * 3600000);
+}
+
+export function cleanExpiredPowerUps(activePowerUps) {
+  if (!activePowerUps) return {};
+  const now = Date.now();
+  const cleaned = {};
+  for (const [pid, list] of Object.entries(activePowerUps)) {
+    const live = list.filter(p => p.durationHours === 0 || now < p.activatedAt + p.durationHours * 3600000);
+    if (live.length) cleaned[pid] = live;
+  }
+  return cleaned;
+}
+
+export function checkPowerUpTriggers(powerUpSettings, counts) {
+  const triggered = [];
+  for (const [id, settings] of Object.entries(powerUpSettings || {})) {
+    if (!settings.enabled) continue;
+    const { trigger, count } = settings;
+    let met = false;
+    if (trigger === 'daily_chores')      met = counts.dailyChores >= count;
+    if (trigger === 'weekly_chores')     met = counts.weeklyChores >= count;
+    if (trigger === 'monthly_chores')    met = counts.monthlyChores >= count;
+    if (trigger === 'kill_streak')       met = counts.killStreak >= count;
+    if (trigger === 'all_dailies_done')  met = counts.allDailiesDone >= count;
+    if (met) triggered.push(id);
+  }
+  return triggered;
 }
 
 export function checkNewBadges(existingBadges, { streak, gold, monstersKilled, rewardsRedeemed, luckyCount, penaltyFreeDays }) {
