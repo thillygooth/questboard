@@ -103,7 +103,8 @@ function BadgeTooltip({ badge }) {
 
 export default function PlayerCard({ player, gold, xp, isSelected, onClick, monsterDamage, lastHit, streak, monster, prestige, badges, selectedTitleBadge, onSelectTitle, onPrestige, activePowerUps = [], overkillCharge = 0, storedPowerTokens = 0, projectedOverkillRewardId = null }) {
   const tKey = todayKey();
-  const m = resolveMonster(monster, player) || dateSeededMonster(player, tKey);
+  const { level: playerLevel } = getLevelFromXP(xp || 0);
+  const m = resolveMonster(monster, player) || dateSeededMonster(player, tKey, playerLevel);
   const dmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
   const hp = Math.max(0, Math.min(m.maxHP, m.maxHP - dmg));
   const dead = hp === 0;

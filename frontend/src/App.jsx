@@ -59,7 +59,8 @@ function applyAutoResets(raw, players) {
 
     if (yKey) {
       players.forEach(pl => {
-        const m = dateSeededMonster(pl, yKey);
+        const plLevel = getLevelFromXP(state.xp?.[pl.id] || 0).level;
+        const m = dateSeededMonster(pl, yKey, plLevel);
         const dmg = (state.monsterDamage?.[pl.id]?.[yKey]) || 0;
         if (dmg >= m.maxHP) {
           newStreaks[pl.id] = (newStreaks[pl.id] || 0) + 1;
@@ -305,7 +306,9 @@ export default function App() {
 
     const player = players.find(p => p.id === selected);
     const tKey = todayKey();
-    const m = dateSeededMonster(player, tKey);
+    const playerXpForMonster = serverState.xp?.[selected] || 0;
+    const playerLevelForMonster = getLevelFromXP(playerXpForMonster).level;
+    const m = dateSeededMonster(player, tKey, playerLevelForMonster);
     const totalDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
     const monsterAlreadyDefeated = totalDmg >= m.maxHP;
 
@@ -471,7 +474,8 @@ export default function App() {
     else if (justKilled) {
       playKill();
       const allDone = players.every(pl => {
-        const plM = dateSeededMonster(pl, tKey);
+        const plLvl = getLevelFromXP(newState.xp?.[pl.id] || 0).level;
+        const plM = dateSeededMonster(pl, tKey, plLvl);
         const plDmg = (newState.monsterDamage?.[pl.id]?.[tKey]) || 0;
         return plDmg >= plM.maxHP;
       });
@@ -537,7 +541,8 @@ export default function App() {
       return;
     }
 
-    const m = dateSeededMonster(player, tKey);
+    const unclaimLevel = getLevelFromXP(serverState.xp?.[selected] || 0).level;
+    const m = dateSeededMonster(player, tKey, unclaimLevel);
     const prevDmg = (serverState.monsterDamage?.[selected]?.[tKey]) || 0;
     const newDmg = Math.max(0, prevDmg - actualPts);
     const wasKillShot = prevDmg >= m.maxHP && newDmg < m.maxHP;
