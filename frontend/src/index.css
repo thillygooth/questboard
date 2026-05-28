@@ -193,6 +193,19 @@ body.crt::after {
 
 .reset-btn:hover { color: var(--gold2); border-color: var(--gold-border); }
 
+.mute-btn {
+  font-size: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: border-color 0.15s;
+}
+.mute-btn:hover { border-color: var(--gold-border); }
+
 /* ── Player cards ── */
 .players {
   display: grid;

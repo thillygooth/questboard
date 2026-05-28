@@ -11,7 +11,7 @@ import DungeonMap from './components/DungeonMap';
 import TileSprite from './components/TileSprite';
 import Celebration from './components/Celebration';
 import SetupWizard from './components/SetupWizard';
-import { playHit, playKill, playFanfare, playUndo, playRedeem, playCrit, playKeyPickup } from './sounds';
+import { playHit, playKill, playFanfare, playUndo, playRedeem, playCrit, playKeyPickup, isMuted, setMuted } from './sounds';
 
 const API = '/api';
 
@@ -180,6 +180,7 @@ export default function App() {
   const [lastHits, setLastHits] = useState({});
   const [celebration, setCelebration] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
   const lastActionAt = useRef(0);
   const lastChoreAt = useRef(0);
   const comboRef = useRef(0);
@@ -792,6 +793,7 @@ export default function App() {
             <TileSprite tile={116} display={14} /> History
           </button>
         </div>
+        <button className="mute-btn" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); }} title={muted ? 'Unmute sounds' : 'Mute sounds'}>{muted ? '\ud83d\udd07' : '\ud83d\udd0a'}</button>
         <button className="reset-btn" onClick={() => setShowSettings(true)}><TileSprite tile={115} display={12} /> Settings</button>
         <button className="reset-btn" onClick={resetWeek}><TileSprite tile={115} display={12} /> Reset week</button>
       </div>
