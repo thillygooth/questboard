@@ -1,6 +1,18 @@
 // Lazy singleton AudioContext, created on first use to satisfy browser autoplay policy.
 let ctx = null;
 
+// Mute state
+let muted = JSON.parse(localStorage.getItem('questboard_muted') || 'false');
+
+export function setMuted(val) {
+  muted = val;
+  localStorage.setItem('questboard_muted', JSON.stringify(val));
+}
+
+export function isMuted() {
+  return muted;
+}
+
 function getCtx() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
   return ctx;
@@ -8,6 +20,7 @@ function getCtx() {
 
 // Plays a single chiptune beep. freq=Hz, dur=seconds, type=oscillator waveform, vol=peak gain.
 function beep(freq, dur, type = 'square', vol = 0.12) {
+  if (muted) return;
   try {
     const c = getCtx();
     const osc = c.createOscillator();
