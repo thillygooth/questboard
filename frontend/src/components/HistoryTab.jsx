@@ -19,12 +19,15 @@ function formatTime(ts) {
 }
 
 const TYPE_TILE = {
-  chore:   118,
-  gold:     55,
-  penalty: 123,
-  reward:   41,
-  badge:    29,
-  loot:     72,
+  chore:           118,
+  gold:             55,
+  penalty:         123,
+  reward:           41,
+  badge:            29,
+  loot:             72,
+  bounty_post:      89,
+  bounty_complete:  89,
+  bounty_cancel:    89,
 };
 
 export default function HistoryTab({ history, players, weeklyGold = {} }) {
@@ -64,11 +67,14 @@ export default function HistoryTab({ history, players, weeklyGold = {} }) {
             const tile = TYPE_TILE[h.type] ?? 118;
             let action, pts;
             switch (h.type) {
-              case 'chore':   action = 'completed'; pts = `(+${h.pts} dmg${h.crit ? ' CRIT' : ''})`; break;
-              case 'penalty': action = 'attacked by'; pts = `(-${h.pts} gold)`; break;
-              case 'badge':   action = 'earned'; pts = h.icon || '🏅'; break;
-              case 'loot':    action = 'found'; pts = h.pts ? `(+${h.pts} gold)` : (h.xp ? `(+${h.xp} XP)` : ''); break;
-              default:        action = 'slew'; pts = h.pts != null ? `(+${h.pts} gold${h.lucky ? ' LUCKY' : ''})` : ''; break;
+              case 'chore':           action = 'completed'; pts = `(+${h.pts} dmg${h.crit ? ' CRIT' : ''})`; break;
+              case 'penalty':         action = 'attacked by'; pts = `(-${h.pts} gold)`; break;
+              case 'badge':           action = 'earned'; pts = h.icon || '🏅'; break;
+              case 'loot':            action = 'found'; pts = h.pts ? `(+${h.pts} gold)` : (h.xp ? `(+${h.xp} XP)` : ''); break;
+              case 'bounty_post':     action = 'posted bounty'; pts = `(-${h.pts}g held)`; break;
+              case 'bounty_complete': action = 'completed bounty'; pts = `(+${h.pts}g)`; break;
+              case 'bounty_cancel':   action = 'canceled bounty'; pts = `(+${h.pts}g back)`; break;
+              default:                action = 'slew'; pts = h.pts != null ? `(+${h.pts} gold${h.lucky ? ' LUCKY' : ''})` : ''; break;
             }
             return (
               <div key={i} className="redeemed-item">

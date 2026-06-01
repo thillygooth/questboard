@@ -5,6 +5,7 @@ import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
 import HistoryTab from './components/HistoryTab';
+import BountyBoard from './components/BountyBoard';
 import DungeonBackground from './components/DungeonBackground';
 import Torches from './components/Torches';
 import DungeonMap from './components/DungeonMap';
@@ -33,6 +34,7 @@ function makeDefaultState(players) {
     todayKey: '',
     monthKey: '',
     history: [],
+    bounties: [],
     monsterDamage: {},
     monsterPenalties: {},
     damageLog: {},
@@ -633,6 +635,65 @@ export default function App() {
     await updateState(newState);
   }, [serverState, updateState]);
 
+  const createBounty = useCallback(async (title, icon, gold, assignedTo) => {
+    if (!selected || !serverState) return;
+    const player = players.find(p => p.id === selected);
+    const playerGold = serverState.gold[selected] || 0;
+    if (playerGold < gold) return;
+    const bounty = {
+      id: `bounty_${Date.now()}`,
+      title,
+      icon,
+      gold,
+      createdBy: selected,
+      assignedTo: assignedTo || null,
+      createdAt: Date.now(),
+      completedAt: null,
+      completedBy: null,
+    };
+    const newState = {
+      ...serverState,
+      gold: { ...serverState.gold, [selected]: playerGold - gold },
+      bounties: [...(serverState.bounties || []), bounty],
+      history: [...(serverState.history || []), { type: 'bounty_post', player: player.name, name: title, pts: gold, ts: Date.now() }],
+    };
+    await updateState(newState);
+    showToast(`${player.name} posted: ${title} (${gold}g offered)`);
+  }, [selected, serverState, players, updateState, showToast]);
+
+  const claimBounty = useCallback(async (bountyId) => {
+    if (!selected || !serverState) return;
+    const bounty = (serverState.bounties || []).find(b => b.id === bountyId);
+    if (!bounty || bounty.completedAt) return;
+    const player = players.find(p => p.id === selected);
+    const newState = {
+      ...serverState,
+      gold: { ...serverState.gold, [selected]: (serverState.gold[selected] || 0) + bounty.gold },
+      bounties: (serverState.bounties || []).map(b =>
+        b.id === bountyId ? { ...b, completedAt: Date.now(), completedBy: selected } : b
+      ),
+      history: [...(serverState.history || []), { type: 'bounty_complete', player: player.name, name: bounty.title, pts: bounty.gold, ts: Date.now() }],
+    };
+    await updateState(newState);
+    playRedeem();
+    showToast(`${player.name} completed bounty: ${bounty.title}! +${bounty.gold}g`);
+  }, [selected, serverState, players, updateState, showToast]);
+
+  const cancelBounty = useCallback(async (bountyId) => {
+    if (!selected || !serverState) return;
+    const bounty = (serverState.bounties || []).find(b => b.id === bountyId);
+    if (!bounty || bounty.createdBy !== selected || bounty.completedAt) return;
+    const player = players.find(p => p.id === selected);
+    const newState = {
+      ...serverState,
+      gold: { ...serverState.gold, [selected]: (serverState.gold[selected] || 0) + bounty.gold },
+      bounties: (serverState.bounties || []).filter(b => b.id !== bountyId),
+      history: [...(serverState.history || []), { type: 'bounty_cancel', player: player.name, name: bounty.title, pts: bounty.gold, ts: Date.now() }],
+    };
+    await updateState(newState);
+    showToast(`${player.name} canceled: ${bounty.title} (+${bounty.gold}g returned)`);
+  }, [selected, serverState, players, updateState, showToast]);
+
   const handleDungeonMove = useCallback(async (playerId, dx, dy) => {
     if (!serverState) return;
     const player = players.find(p => p.id === playerId);
@@ -804,6 +865,11 @@ export default function App() {
     else if (config?.uiScale === 'epic') document.body.classList.add('scale-epic');
   }, [config?.uiScale]);
 
+  // Apply portrait orientation class on body
+  useEffect(() => {
+    document.body.classList.toggle('portrait', config?.displayOrientation === 'portrait');
+  }, [config?.displayOrientation]);
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text2)', fontSize: 14 }}>
@@ -853,6 +919,9 @@ export default function App() {
           </button>
           <button className={`tab${currentTab === 'dungeon' ? ' active' : ''}`} onClick={() => setCurrentTab('dungeon')}>
             <TileSprite tile={117} display={14} /> Dungeon
+          </button>
+          <button className={`tab${currentTab === 'bounties' ? ' active' : ''}`} onClick={() => setCurrentTab('bounties')}>
+            📜 Bounties
           </button>
           <button className={`tab${currentTab === 'history' ? ' active' : ''}`} onClick={() => setCurrentTab('history')}>
             <TileSprite tile={116} display={14} /> History
@@ -927,6 +996,17 @@ export default function App() {
                 cellSize={44}
               />
             : <div className="no-select">Select a hero above to explore the dungeon.</div>
+        )}
+        {currentTab === 'bounties' && (
+          <BountyBoard
+            players={players}
+            selectedPlayerId={selected}
+            bounties={state.bounties || []}
+            gold={selected ? state.gold[selected] || 0 : 0}
+            onCreateBounty={createBounty}
+            onClaimBounty={claimBounty}
+            onCancelBounty={cancelBounty}
+          />
         )}
         {currentTab === 'history' && (
           <HistoryTab history={state.history || []} players={players} weeklyGold={state.weeklyGold || {}} />

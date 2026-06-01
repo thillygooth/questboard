@@ -534,7 +534,7 @@ function RewardSection({ players, enabledRewards, onToggle, rewardOverrides, onO
 }
 
 // ── Step 4: Reward selection (wizard) ─────────────────────────────────────────
-function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores }) {
+function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, onOverride, customRewards, onAddCustom, onRemoveCustom, onBack, onLaunch, crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores, displayOrientation, onChangeDisplayOrientation }) {
   return (
     <div>
       <div style={S.h2}>Choose your rewards</div>
@@ -590,7 +590,7 @@ function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, 
           <span style={{ color: '#5a5a7a', fontSize: 10 }}>Require confirmation before completing chores</span>
         </div>
       </div>
-      <div>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ ...S.label, marginBottom: 8 }}>UI SCALE</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {UI_SCALES.map(s => (
@@ -601,6 +601,21 @@ function StepRewardSelect({ players, enabledRewards, onToggle, rewardOverrides, 
             >
               <div style={{ fontWeight: 'bold' }}>{s.label}</div>
               <div style={{ fontSize: 9, opacity: 0.7 }}>{s.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ ...S.label, marginBottom: 6 }}>DISPLAY ORIENTATION</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[{ id: 'landscape', label: 'Landscape', desc: '⬛ Wide' }, { id: 'portrait', label: 'Portrait', desc: '▬ Tall' }].map(o => (
+            <button
+              key={o.id}
+              style={{ ...((displayOrientation ?? 'landscape') === o.id ? S.btnPrimary : S.btn), flex: 1, padding: '8px 4px', fontSize: 11 }}
+              onClick={() => onChangeDisplayOrientation(o.id)}
+            >
+              <div style={{ fontWeight: 'bold' }}>{o.label}</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>{o.desc}</div>
             </button>
           ))}
         </div>
@@ -777,7 +792,7 @@ function TabPowerUps({ powerUpSettings, onChange }) {
 }
 
 // ── Edit tab: Display ─────────────────────────────────────────────────────────
-function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores }) {
+function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores, displayOrientation, onChangeDisplayOrientation }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -828,7 +843,7 @@ function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animate
           <span style={{ color: '#5a5a7a', fontSize: 10 }}>Require confirmation before completing chores</span>
         </div>
       </div>
-      <div>
+      <div style={{ marginBottom: 24 }}>
         <div style={{ ...S.label, marginBottom: 6 }}>UI SCALE</div>
         <p style={{ ...S.p, fontSize: 11 }}>Scale the entire interface for your display. Heroic and Epic are great for tablets or large screens.</p>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -840,6 +855,22 @@ function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animate
             >
               <div style={{ fontWeight: 'bold' }}>{s.label}</div>
               <div style={{ fontSize: 10, opacity: 0.7 }}>{s.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div style={{ ...S.label, marginBottom: 6 }}>DISPLAY ORIENTATION</div>
+        <p style={{ ...S.p, fontSize: 11 }}>Landscape is the default for kitchen tablets. Portrait stacks the layout vertically for fridge or tall screens.</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[{ id: 'landscape', label: 'Landscape', desc: '⬛ Wide' }, { id: 'portrait', label: 'Portrait', desc: '▬ Tall' }].map(o => (
+            <button
+              key={o.id}
+              style={{ ...(displayOrientation === o.id ? S.btnPrimary : S.btn), flex: 1, padding: '14px 4px', fontSize: 12 }}
+              onClick={() => onChangeDisplayOrientation(o.id)}
+            >
+              <div style={{ fontWeight: 'bold' }}>{o.label}</div>
+              <div style={{ fontSize: 10, opacity: 0.7 }}>{o.desc}</div>
             </button>
           ))}
         </div>
@@ -871,6 +902,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
   const [animatedBg, setAnimatedBg] = useState(initialConfig?.animatedBg ?? true);
   const [weekStartDay, setWeekStartDay] = useState(initialConfig?.weekStartDay ?? 1);
   const [confirmChores, setConfirmChores] = useState(initialConfig?.confirmChores ?? false);
+  const [displayOrientation, setDisplayOrientation] = useState(initialConfig?.displayOrientation ?? 'landscape');
   const [powerUpSettings, setPowerUpSettings] = useState(
     initialConfig?.powerUpSettings ?? { ...DEFAULT_POWER_UP_SETTINGS }
   );
@@ -945,6 +977,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
       weekStartDay,
       confirmChores,
       powerUpSettings,
+      displayOrientation,
     });
   }
 
@@ -1018,6 +1051,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
                 animatedBg={animatedBg} onToggleAnimatedBg={() => setAnimatedBg(v => !v)}
                 weekStartDay={weekStartDay} onChangeWeekStartDay={setWeekStartDay}
                 confirmChores={confirmChores} onToggleConfirmChores={() => setConfirmChores(v => !v)}
+                displayOrientation={displayOrientation} onChangeDisplayOrientation={setDisplayOrientation}
               />
             )}
           </div>
@@ -1097,6 +1131,8 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
               onChangeWeekStartDay={setWeekStartDay}
               confirmChores={confirmChores}
               onToggleConfirmChores={() => setConfirmChores(v => !v)}
+              displayOrientation={displayOrientation}
+              onChangeDisplayOrientation={setDisplayOrientation}
             />
           )}
         </div>

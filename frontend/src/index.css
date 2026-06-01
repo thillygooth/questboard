@@ -1624,3 +1624,196 @@ body.scale-heroic {
 body.scale-epic {
   zoom: 1.75;
 }
+
+/* ── Portrait / fridge display mode ── */
+body.portrait .board { max-width: 680px; }
+body.portrait .header { flex-wrap: wrap; gap: 6px 10px; }
+body.portrait .tabs { order: 10; flex-basis: 100%; }
+body.portrait .players { grid-template-columns: repeat(2, 1fr); }
+body.portrait .chore-sections { grid-template-columns: 1fr; }
+
+/* ── Bounty Board ── */
+.bounty-board { padding: 0; }
+
+.bounty-post-btn {
+  font-family: var(--pixel);
+  font-size: 10px;
+  background: linear-gradient(135deg, #1a2a0a, #1e3a0e);
+  border: 1px solid rgba(90,160,60,0.5);
+  color: #78b83c;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.bounty-post-btn:hover { border-color: rgba(90,160,60,0.85); color: #9ad450; }
+
+.bounty-create-form {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.bounty-form-label {
+  font-family: var(--pixel);
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.bounty-form-hint {
+  font-family: var(--pixel);
+  font-size: 8px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+
+.bounty-input {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 6px 10px;
+  font-family: var(--pixel);
+  font-size: 11px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  outline: none;
+}
+.bounty-input:focus { border-color: var(--gold-border); }
+
+.bounty-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.bounty-icon-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s;
+  padding: 0;
+}
+.bounty-icon-btn:hover { border-color: var(--border2); }
+.bounty-icon-btn.selected {
+  border-color: var(--gold-border);
+  background: var(--gold-bg);
+}
+
+.bounty-submit-btn {
+  font-family: var(--pixel);
+  font-size: 11px;
+  background: linear-gradient(135deg, #2a1a0a, #3a2a0e);
+  border: 1px solid var(--gold-border);
+  color: var(--gold2);
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.bounty-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--text2);
+}
+
+.bounty-card {
+  background: var(--bg2);
+  background-image: var(--stone);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bounty-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bounty-card-icon { font-size: 20px; flex-shrink: 0; }
+
+.bounty-card-info { flex: 1; min-width: 0; }
+
+.bounty-title {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.bounty-meta {
+  font-family: var(--pixel);
+  font-size: 9px;
+  color: var(--text2);
+}
+
+.bounty-meta-anyone { color: var(--text2); }
+
+.bounty-gold {
+  font-family: var(--pixel);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bounty-card-actions { display: flex; gap: 8px; }
+
+.bounty-claim-btn {
+  font-family: var(--pixel);
+  font-size: 10px;
+  background: linear-gradient(135deg, #1a3a0a, #2a5a0e);
+  border: 1px solid rgba(90,160,60,0.6);
+  color: #78b83c;
+  padding: 5px 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.12s, color 0.12s;
+}
+.bounty-claim-btn:hover { border-color: rgba(90,160,60,0.9); color: #9ad450; }
+
+.bounty-cancel-btn {
+  font-family: var(--pixel);
+  font-size: 10px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.12s, color 0.12s;
+}
+.bounty-cancel-btn:hover { border-color: rgba(180,60,60,0.5); color: var(--danger-text); }
+
+.bounty-card-done {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
