@@ -39,6 +39,8 @@ const CLASS_TILES = Object.fromEntries(
   CLASSES.map(({ id, label, tile }) => [id, { tile, label }])
 );
 
+// Monster sprite configs live in monsterSprites.js (MONSTER_SPRITES) — the single
+// source of truth shared with DungeonMap. Don't redefine the roster here.
 
 function BadgeTooltip({ badge }) {
   const [visible, setVisible] = useState(false);
@@ -231,7 +233,15 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
                   <img
                     src={mc.src}
                     className="monster-idle"
-                    style={{ height: mc.dp ?? 48, width: 'auto', maxWidth: (mc.dp ?? 48) * 1.6, imageRendering: 'pixelated', display: 'block', margin: '0 auto' }}
+                    style={{
+                      height: mc.dp ?? 48,
+                      width: 'auto',
+                      maxWidth: (mc.dp ?? 48) * 1.6,
+                      imageRendering: 'pixelated',
+                      display: 'block',
+                      margin: '0 auto',
+                      filter: mc.f,
+                    }}
                   />
                 ) : (
                   <MonsterSprite
