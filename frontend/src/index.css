@@ -169,6 +169,7 @@ body.crt::after {
   align-items: center;
   justify-content: center;
   gap: 5px;
+  white-space: nowrap;
   transition: color 0.15s;
 }
 
@@ -210,6 +211,78 @@ body.crt::after {
   transition: border-color 0.15s;
 }
 .mute-btn:hover { border-color: var(--gold-border); }
+
+/* ── Header hamburger menu (Epic scale) ── */
+.header-menu { position: relative; flex-shrink: 0; }
+
+.menu-toggle {
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger,
+.hamburger::before,
+.hamburger::after {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.hamburger {
+  position: relative;
+  color: var(--text2);
+}
+
+.hamburger::before,
+.hamburger::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.hamburger::before { top: -5px; }
+.hamburger::after  { top: 5px; }
+
+.menu-toggle:hover .hamburger { color: var(--gold2); }
+
+.header-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  padding: 5px;
+  background: var(--bg2);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+}
+
+.header-dropdown button {
+  font-size: 11px;
+  font-family: var(--pixel);
+  color: var(--text2);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  text-align: left;
+  transition: color 0.15s, background 0.15s;
+}
+
+.header-dropdown button:hover { color: var(--gold2); background: var(--bg4); }
 
 /* ── Player cards ── */
 .players {
