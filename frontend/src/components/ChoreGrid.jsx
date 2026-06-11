@@ -40,7 +40,7 @@ function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selecte
           {chore.pts}
         </span>
       </div>
-      <div className="chore-name">{chore.name}{chore.mode === 'solo' && <span className="solo-badge">1P</span>}</div>
+      <div className="chore-name">{chore.name}{chore.mode === 'solo' && <span className="solo-badge">ALL</span>}</div>
       {isDone && (
         <div className="done-by">{canUndo ? '↩ undo' : `✔ ${dp ? dp.name : 'done'}`}</div>
       )}

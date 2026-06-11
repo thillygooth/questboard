@@ -341,9 +341,9 @@ function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOver
         <span style={{ color: '#c8d0e0', fontSize: 12, flex: 1 }}>{chore.name}</span>
         <button
           onClick={e => { e.stopPropagation(); onOverride(chore.id, { ...ov, mode: mode === 'party' ? 'solo' : 'party' }); }}
-          style={{ background: 'none', border: '1px solid #3a3a5e', color: mode === 'solo' ? '#f5a0c0' : '#8dc447', fontSize: 10, padding: '2px 6px', cursor: 'pointer', minWidth: 34 }}
-          title={mode === 'solo' ? '1 player only  -  tap to make shared' : 'All players share  -  tap to make solo'}
-        >{mode === 'solo' ? '1P' : 'ALL'}</button>
+          style={{ background: 'none', border: '1px solid #3a3a5e', color: mode === 'solo' ? '#8dc447' : '#f5a0c0', fontSize: 10, padding: '2px 6px', cursor: 'pointer', minWidth: 34 }}
+          title={mode === 'solo' ? 'Every player does their own  -  tap to make one-person' : 'One person does it for the party  -  tap to make everyone'}
+        >{mode === 'solo' ? 'ALL' : '1P'}</button>
         <CycleBtn value={who} onClick={e => { e.stopPropagation(); const next = WHO_CYCLE[(WHO_CYCLE.indexOf(who) + 1) % WHO_CYCLE.length]; onOverride(chore.id, { ...ov, who: next }); }} />
         <button
           onClick={e => { e.stopPropagation(); onOverride(chore.id, { ...ov, pts: pts >= 6 ? 1 : pts + 1 }); }}
@@ -400,8 +400,8 @@ function ChoreSection({ players, enabledChores, onToggle, choreOverrides, onOver
                 <option value="monthly">Monthly</option>
               </select>
               <select style={{ ...S.input, flex: 1 }} value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}>
-                <option value="party">ALL (shared)</option>
-                <option value="solo">1P (per player)</option>
+                <option value="solo">ALL (everyone)</option>
+                <option value="party">1P (one person)</option>
               </select>
             </>
           }
@@ -418,7 +418,7 @@ function StepChoreSelect({ players, enabledChores, onToggle, choreOverrides, onO
   return (
     <div>
       <div style={S.h2}>Choose your quests</div>
-      <p style={S.p}>Select chores. Green <b style={{ color: '#8dc447' }}>ALL</b> = shared by party; pink <b style={{ color: '#f5a0c0' }}>1P</b> = each player tracks independently.</p>
+      <p style={S.p}>Select chores. Green <b style={{ color: '#8dc447' }}>ALL</b> = every player does their own; pink <b style={{ color: '#f5a0c0' }}>1P</b> = one person does it for the party.</p>
       <ChoreSection
         players={players}
         enabledChores={enabledChores} onToggle={onToggle}
