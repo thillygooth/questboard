@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.2 - 2026-06-26
+
+### Changed
+- Performance: the animated dungeon background now scrolls via GPU-composited
+  transforms instead of per-frame background-position repaints, and its color
+  filters are rasterized once instead of every frame. The static vignette/wall/
+  torch-glow lighting is painted once per resize rather than redrawn each frame.
+  Parallax layers now also loop seamlessly at any viewport height. No visual or
+  gameplay changes.
+
 ## 1.12.1 - 2026-06-26
 
 ### Changed
