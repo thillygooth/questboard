@@ -60,11 +60,11 @@ function BadgeTooltip({ badge }) {
   );
 }
 
-export default function PlayerCard({ player, gold, xp, isSelected, onClick, monsterDamage, lastHit, streak, monster, prestige, badges, selectedTitleBadge, onSelectTitle, onPrestige, activePowerUps = [], overkillCharge = 0, storedPowerTokens = 0, projectedOverkillRewardId = null }) {
+function PlayerCard({ player, gold, xp, isSelected, onClick, playerDamage, lastHit, streak, monster, prestige, badges, selectedTitleBadge, onSelectTitle, onPrestige, activePowerUps = [], overkillCharge = 0, storedPowerTokens = 0, projectedOverkillRewardId = null }) {
   const tKey = todayKey();
   const { level: playerLevel } = getLevelFromXP(xp || 0);
   const m = resolveMonster(monster, player) || dateSeededMonster(player, tKey, playerLevel);
-  const dmg = (monsterDamage?.[player.id]?.[tKey]) || 0;
+  const dmg = (playerDamage?.[tKey]) || 0;
   const hp = Math.max(0, Math.min(m.maxHP, m.maxHP - dmg));
   const dead = hp === 0;
   const pct = Math.round((hp / m.maxHP) * 100);
@@ -290,3 +290,34 @@ export default function PlayerCard({ player, gold, xp, isSelected, onClick, mons
     </div>
   );
 }
+
+function sameStrArray(a, b) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+// Only re-render a card when its own data changes. Callback props are stable
+// (or functionally identical) so they're intentionally excluded — this keeps one
+// player's chore tap from re-rendering every other player's card. The internal
+// sprite-frame timer still animates independently of this comparison.
+function arePropsEqual(p, n) {
+  return p.player === n.player
+    && p.gold === n.gold
+    && p.xp === n.xp
+    && p.isSelected === n.isSelected
+    && p.streak === n.streak
+    && p.prestige === n.prestige
+    && p.lastHit === n.lastHit
+    && p.monster === n.monster
+    && p.playerDamage === n.playerDamage
+    && p.overkillCharge === n.overkillCharge
+    && p.storedPowerTokens === n.storedPowerTokens
+    && p.selectedTitleBadge === n.selectedTitleBadge
+    && p.projectedOverkillRewardId === n.projectedOverkillRewardId
+    && sameStrArray(p.badges, n.badges)
+    && JSON.stringify(p.activePowerUps) === JSON.stringify(n.activePowerUps);
+}
+
+export default React.memo(PlayerCard, arePropsEqual);

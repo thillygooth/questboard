@@ -1,18 +1,23 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS, POWER_UPS, OVERKILL_CHARGE_GOAL, POWER_TOKEN_CAP, POWER_TOKEN_CHOICES } from './data';
 import { todayKey, weekKey, monthKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, getTitleForBadge, isPowerUpActive, getActivePowerUps, cleanExpiredPowerUps, checkPowerUpTriggers, choreDoneKey, isChoreDoneForPlayer, initDungeonMap, dungeonMoveResult, generateFloor } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
-import HistoryTab from './components/HistoryTab';
-import BountyBoard from './components/BountyBoard';
 import DungeonBackground from './components/DungeonBackground';
 import Torches from './components/Torches';
-import DungeonMap from './components/DungeonMap';
 import TileSprite from './components/TileSprite';
 import Celebration from './components/Celebration';
-import SetupWizard from './components/SetupWizard';
 import { playHit, playKill, playFanfare, playUndo, playRedeem, playCrit, playKeyPickup, isMuted, setMuted } from './sounds';
+
+// Code-split the heavy, conditionally-rendered views so a low-end device only
+// parses+evaluates them when first opened. SetupWizard in particular is large
+// and unused on a normal launch. The core chores view (PlayerCard/ChoreGrid)
+// stays eager so the default screen has no loading gap.
+const HistoryTab = lazy(() => import('./components/HistoryTab'));
+const BountyBoard = lazy(() => import('./components/BountyBoard'));
+const DungeonMap = lazy(() => import('./components/DungeonMap'));
+const SetupWizard = lazy(() => import('./components/SetupWizard'));
 
 const API = '/api';
 
@@ -270,18 +275,30 @@ export default function App() {
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const lastRawRef = useRef('');
   const loadState = useCallback(async () => {
     if (Date.now() - lastActionAt.current < 3000) return;
     try {
       const res = await fetch(`${API}/state`);
-      const fetched = await res.json();
-      const { state: after, changed } = applyAutoResets(fetched, players, config?.weekStartDay ?? 1);
+      const text = await res.text();
+      const fetched = JSON.parse(text);
+      const wsd = config?.weekStartDay ?? 1;
+      // Skip the whole re-render when the server state is byte-identical to what
+      // we last applied and no date-boundary reset is pending. Keeps an idle wall
+      // display from reconciling the entire tree (and competing with the
+      // background animation) every 5s when nothing has actually changed.
+      const datesCurrent = fetched.todayKey === todayKey()
+        && fetched.weekKey === weekKey(wsd)
+        && fetched.monthKey === monthKey();
+      if (text === lastRawRef.current && datesCurrent) return;
+      lastRawRef.current = text;
+      const { state: after, changed } = applyAutoResets(fetched, players, wsd);
       if (changed) await saveState(after);
       setServerState(after);
     } catch (e) {
       console.error('Poll failed', e);
     }
-  }, [players, saveState]);
+  }, [players, saveState, config?.weekStartDay]);
 
   useEffect(() => {
     if (!config) return;
@@ -882,7 +899,9 @@ export default function App() {
     return (
       <>
         {(config?.animatedBg !== false) && <DungeonBackground />}
-        <SetupWizard onComplete={handleSetupComplete} />
+        <Suspense fallback={null}>
+          <SetupWizard onComplete={handleSetupComplete} />
+        </Suspense>
       </>
     );
   }
@@ -891,11 +910,13 @@ export default function App() {
     return (
       <>
         {(config?.animatedBg !== false) && <DungeonBackground />}
-        <SetupWizard
-          initialConfig={config}
-          onComplete={handleEditComplete}
-          onCancel={() => setShowSettings(false)}
-        />
+        <Suspense fallback={null}>
+          <SetupWizard
+            initialConfig={config}
+            onComplete={handleEditComplete}
+            onCancel={() => setShowSettings(false)}
+          />
+        </Suspense>
       </>
     );
   }
@@ -943,7 +964,7 @@ export default function App() {
             xp={state.xp?.[p.id] || 0}
             isSelected={selected === p.id}
             onClick={() => selectPlayer(p.id)}
-            monsterDamage={state.monsterDamage}
+            playerDamage={state.monsterDamage?.[p.id]}
             lastHit={lastHits[p.id]}
             streak={state.streaks?.[p.id] || 0}
             prestige={state.prestige?.[p.id] || 0}
@@ -959,6 +980,7 @@ export default function App() {
         ))}
       </div>
 
+      <Suspense fallback={<div className="no-select">Loading…</div>}>
       <div>
         {currentTab === 'chores' && (
           selected && selectedPlayer
@@ -1012,6 +1034,7 @@ export default function App() {
           <HistoryTab history={state.history || []} players={players} weeklyGold={state.weeklyGold || {}} />
         )}
       </div>
+      </Suspense>
 
       <div className={`toast${toast.visible ? ' show' : ''}`}>{toast.msg}</div>
     </div>

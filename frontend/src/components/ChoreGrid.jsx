@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { getChoresFor, choreDoneKey, isChoreDoneForPlayer, getChoreClaimant } from '../logic';
 import TileSprite from './TileSprite';
 
@@ -11,13 +11,11 @@ function dmgClass(p) {
   return 'pts-6';
 }
 
-function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selectedPlayerId, onClaim, onUnclaim, bonusChoreId }) {
-  const store = chore.freq === 'daily' ? dailyDone : chore.freq === 'weekly' ? weeklyDone : monthlyDone;
-  const isDone = isChoreDoneForPlayer(store, chore, selectedPlayerId);
-  const claimedById = getChoreClaimant(store, chore, selectedPlayerId);
-  const dp = claimedById ? players.find(p => p.id === claimedById) : null;
-  const canUndo = isDone && claimedById === selectedPlayerId;
-
+// Derived state (isDone / claimedName / canUndo / isBonus) is computed by the
+// parent and passed as primitives so this stays cheap to memo-compare: a single
+// chore tap only re-renders the tiles whose status actually changed, not the
+// whole grid.
+const ChoreCard = React.memo(function ChoreCard({ chore, isDone, claimedName, canUndo, isBonus, onClaim, onUnclaim }) {
   function handleClick() {
     if (isDone) {
       if (canUndo) onUnclaim(chore.id);
@@ -28,13 +26,13 @@ function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selecte
 
   return (
     <div
-      className={`chore ${chore.freq}${isDone ? ' done' : ''}${canUndo ? ' undoable' : ''}${chore.id === bonusChoreId ? ' bonus' : ''}`}
+      className={`chore ${chore.freq}${isDone ? ' done' : ''}${canUndo ? ' undoable' : ''}${isBonus ? ' bonus' : ''}`}
       onClick={handleClick}
       title={canUndo ? 'Tap to undo' : undefined}
     >
       <div className="chore-top">
         <TileSprite tile={chore.icon} scale={2} />
-        {chore.id === bonusChoreId && <span className="bonus-badge">⭐2x</span>}
+        {isBonus && <span className="bonus-badge">⭐2x</span>}
         <span className={`pts-badge ${dmgClass(chore.pts)}`}>
           <TileSprite tile={118} display={10} />
           {chore.pts}
@@ -42,27 +40,41 @@ function ChoreCard({ chore, players, dailyDone, weeklyDone, monthlyDone, selecte
       </div>
       <div className="chore-name">{chore.name}{chore.mode === 'solo' && <span className="solo-badge">1P</span>}</div>
       {isDone && (
-        <div className="done-by">{canUndo ? '↩ undo' : `✔ ${dp ? dp.name : 'done'}`}</div>
+        <div className="done-by">{canUndo ? '↩ undo' : `✔ ${claimedName || 'done'}`}</div>
       )}
     </div>
   );
-}
+});
 
 export default function ChoreGrid({ player, players, activeChores, dailyDone, weeklyDone, monthlyDone, onClaimChore, onUnclaimChore, bonusChoreId }) {
-  const chores = getChoresFor(player, activeChores);
-  const daily   = chores.filter(c => c.freq === 'daily');
-  const weekly  = chores.filter(c => c.freq === 'weekly');
-  const monthly = chores.filter(c => c.freq === 'monthly');
+  // Filtering only depends on the player and chore set, not on done-state, so it
+  // shouldn't re-run on every chore tap (each tap re-renders this grid).
+  const { daily, weekly, monthly } = useMemo(() => {
+    const chores = getChoresFor(player, activeChores);
+    return {
+      daily:   chores.filter(c => c.freq === 'daily'),
+      weekly:  chores.filter(c => c.freq === 'weekly'),
+      monthly: chores.filter(c => c.freq === 'monthly'),
+    };
+  }, [player, activeChores]);
 
-  const cardProps = {
-    players,
-    selectedPlayerId: player.id,
-    dailyDone,
-    weeklyDone,
-    monthlyDone: monthlyDone || {},
-    onClaim: onClaimChore,
-    onUnclaim: onUnclaimChore,
-    bonusChoreId,
+  const renderCard = (c) => {
+    const store = c.freq === 'daily' ? dailyDone : c.freq === 'weekly' ? weeklyDone : (monthlyDone || {});
+    const isDone = isChoreDoneForPlayer(store, c, player.id);
+    const claimedById = getChoreClaimant(store, c, player.id);
+    const claimedName = claimedById ? (players.find(p => p.id === claimedById)?.name ?? null) : null;
+    return (
+      <ChoreCard
+        key={c.id}
+        chore={c}
+        isDone={isDone}
+        claimedName={claimedName}
+        canUndo={isDone && claimedById === player.id}
+        isBonus={c.id === bonusChoreId}
+        onClaim={onClaimChore}
+        onUnclaim={onUnclaimChore}
+      />
+    );
   };
 
   return (
@@ -74,7 +86,7 @@ export default function ChoreGrid({ player, players, activeChores, dailyDone, we
           <span className="reset-info">— resets at midnight</span>
         </div>
         <div className="chores">
-          {daily.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
+          {daily.map(renderCard)}
         </div>
       </div>
       {weekly.length > 0 && (
@@ -85,7 +97,7 @@ export default function ChoreGrid({ player, players, activeChores, dailyDone, we
             <span className="reset-info">— resets Sunday</span>
           </div>
           <div className="chores">
-            {weekly.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
+            {weekly.map(renderCard)}
           </div>
         </div>
       )}
@@ -97,7 +109,7 @@ export default function ChoreGrid({ player, players, activeChores, dailyDone, we
             <span className="reset-info">— resets 1st of month</span>
           </div>
           <div className="chores">
-            {monthly.map(c => <ChoreCard key={c.id} chore={c} {...cardProps} />)}
+            {monthly.map(renderCard)}
           </div>
         </div>
       )}

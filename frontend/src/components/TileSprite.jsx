@@ -3,7 +3,11 @@ import React from 'react';
 // tile can be a number (tilemap index) or a string (custom icon filename in /sprites/icons/)
 // scale=4 → 64px, scale=2 → 32px, scale=1 → 16px
 // display overrides the rendered size while keeping pixel-perfect scaling
-export default function TileSprite({ tile, scale = 4, display, filter }) {
+// Memoized: this leaf is rendered dozens-to-hundreds of times per frame (every
+// chore/reward tile, header, player card). All props are primitives, so a shallow
+// compare lets an unrelated state change skip re-rendering every sprite — a big
+// reconciliation saving on low-end / wall-display hardware.
+function TileSprite({ tile, scale = 4, display, filter }) {
   const baseSize = 16 * scale;
   const size = display ?? baseSize;
 
@@ -53,3 +57,5 @@ export default function TileSprite({ tile, scale = 4, display, filter }) {
     }} />
   );
 }
+
+export default React.memo(TileSprite);

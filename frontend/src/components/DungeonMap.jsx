@@ -247,6 +247,10 @@ function currentTileDesc(tileType, dungeonMap) {
 export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDungeonMaps = {}, onMove, cellSize = CELL }) {
   if (!dungeonMap?.grid || !player) return null;
   const { grid, pos, explored, pendingMoves, activeMonster, floor = 1 } = dungeonMap;
+  // Build a Set once per render so the 187-cell viewport loop does O(1) lookups
+  // instead of Array.includes() (O(n) over a list that grows as the dungeon is
+  // explored) — i.e. O(cells + explored) per render instead of O(cells × explored).
+  const exploredSet = new Set(explored);
   const [px, py] = pos;
   const inCombat = activeMonster && (activeMonster.currentHP ?? 0) > 0;
   const canMove = pendingMoves > 0 && !inCombat;
@@ -434,7 +438,7 @@ export default function DungeonMap({ player, dungeonMap, allPlayers = [], allDun
               const wy = py + (vy - HALF_H);
               const key        = `${wx},${wy}`;
               const isPlayer   = vx === HALF_W && vy === HALF_H;
-              const isExplored = explored.includes(key);
+              const isExplored = exploredSet.has(key);
               const dist = Math.max(Math.abs(vx - HALF_W), Math.abs(vy - HALF_H));
               const vis  = dist === 0 ? 'current'
                          : dist === 1 ? 'near'

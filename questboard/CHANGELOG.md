@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.1 - 2026-06-26
+
+### Changed
+- Performance: optimized rendering for low-end devices. Memoized the most-rendered
+  components (TileSprite, MonsterSprite, chore/reward grids) so unrelated state
+  changes no longer reconcile the whole tree, and code-split the heavy views
+  (SetupWizard, DungeonMap, BountyBoard, HistoryTab) to shrink initial parse cost.
+  No gameplay or animation changes.
+
 ## 1.0.0 - 2026-05-24
 
 ### Added

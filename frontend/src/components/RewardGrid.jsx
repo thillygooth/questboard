@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { getRewardsFor } from '../logic';
 import TileSprite from './TileSprite';
 
@@ -10,7 +10,7 @@ function rewardTier(cost) {
 }
 
 export default function RewardGrid({ player, gold, activeRewards, onRedeemReward }) {
-  const rewards = getRewardsFor(player, activeRewards);
+  const rewards = useMemo(() => getRewardsFor(player, activeRewards), [player, activeRewards]);
 
   return (
     <>

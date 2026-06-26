@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MonsterSprite({ src, sheetW, sheetH, frameSize = 64, frames = 4, fps = 6, display = 48, filter, offsetY = 0 }) {
+// Memoized on its primitive props. The internal frame timer is unaffected (its
+// effect deps are unchanged), so the sprite still animates — this only stops a
+// parent re-render (e.g. a gold/xp change) from reconciling the sprite needlessly.
+function MonsterSprite({ src, sheetW, sheetH, frameSize = 64, frames = 4, fps = 6, display = 48, filter, offsetY = 0 }) {
   const [frame, setFrame] = useState(0);
   const scale = display / frameSize;
   const isStatic = frames <= 1;
@@ -28,3 +31,5 @@ export default function MonsterSprite({ src, sheetW, sheetH, frameSize = 64, fra
     />
   );
 }
+
+export default React.memo(MonsterSprite);
