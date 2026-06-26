@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.3 - 2026-06-26
+
+### Fixed
+- Weekly quests with a scheduled day (Recycling, Take out trash) were hidden on
+  every other day of the week, so they appeared to be permanently missing from
+  the quest list regardless of audience or scope. Weekly quests are now shown
+  every day for matching players.
+
 ## 1.12.2 - 2026-06-26
 
 ### Changed
