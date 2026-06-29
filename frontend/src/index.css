@@ -1617,13 +1617,10 @@ body.crt::after {
   color: #7a7a9a;
 }
 
-/* ── UI scale modes ── */
-body.scale-heroic {
-  zoom: 1.25;
-}
-body.scale-epic {
-  zoom: 1.75;
-}
+/* ── UI scale modes ──
+   Applied via inline `zoom` on the foreground content wrapper in App.jsx
+   (not <body>) so the full-screen dungeon background + torches stay at true
+   viewport size. */
 
 /* ── Portrait / fridge display mode ── */
 body.portrait .board { max-width: 680px; }

@@ -875,12 +875,12 @@ export default function App() {
     document.body.classList.toggle('crt', enabled);
   }, [config?.crtEnabled]);
 
-  // Apply UI scale classes on body
-  useEffect(() => {
-    document.body.classList.remove('scale-heroic', 'scale-epic');
-    if (config?.uiScale === 'heroic') document.body.classList.add('scale-heroic');
-    else if (config?.uiScale === 'epic') document.body.classList.add('scale-epic');
-  }, [config?.uiScale]);
+  // UI scale: zoom the foreground content only, leaving the full-screen
+  // dungeon background + torches at true viewport size (zooming <body> scaled
+  // those too, breaking sprite/torch rendering at Heroic/Epic).
+  const uiZoom = config?.uiScale === 'heroic' ? 1.25
+               : config?.uiScale === 'epic'   ? 1.75
+               : 1;
 
   // Apply portrait orientation class on body
   useEffect(() => {
@@ -895,6 +895,10 @@ export default function App() {
     );
   }
 
+  // NOTE: the setup/settings overlay is a full-screen `position: fixed` modal
+  // sized in `vh`. The `zoom` UI-scale wrapper multiplies `vh`, making the
+  // overlay taller than the viewport so its header/footer (close + save) become
+  // unreachable. Render these modals at true scale, outside the zoom wrapper.
   if (needsSetup) {
     return (
       <>
@@ -928,6 +932,7 @@ export default function App() {
     <>
     {(config?.animatedBg !== false) && <DungeonBackground />}
     <Torches />
+    <div style={{ zoom: uiZoom }}>
     <div className="board" style={{ position: 'relative', zIndex: 2 }}>
       <div className="header">
         <span className="title"><TileSprite tile={118} display={18} /> Questboard</span>
@@ -1040,6 +1045,7 @@ export default function App() {
     </div>
     <div className="version-label">v{__APP_VERSION__}</div>
     {celebration && <Celebration onDismiss={() => setCelebration(false)} />}
+    </div>
     </>
   );
 }
