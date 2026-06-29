@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ALL_CHORES, REWARDS, POWER_UPS, DEFAULT_POWER_UP_SETTINGS, TRIGGER_TYPES, DURATION_OPTIONS, CLASSES } from '../data';
+import { dateKeyToInputValue, inputValueToDateKey } from '../logic';
 import TileSprite from './TileSprite';
 
 const ICON_CHOICES = [
@@ -792,9 +793,51 @@ function TabPowerUps({ powerUpSettings, onChange }) {
 }
 
 // ── Edit tab: Display ─────────────────────────────────────────────────────────
-function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores, displayOrientation, onChangeDisplayOrientation }) {
+function TabDisplay({ crtEnabled, onToggleCrt, uiScale, onChangeUiScale, animatedBg, onToggleAnimatedBg, weekStartDay, onChangeWeekStartDay, confirmChores, onToggleConfirmChores, displayOrientation, onChangeDisplayOrientation, vacation, onChangeVacation }) {
+  const vac = vacation ?? { enabled: false, start: '', end: '' };
+  const dateInput = {
+    ...S.input,
+    flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 11,
+    colorScheme: 'dark',
+    opacity: vac.enabled ? 1 : 0.5,
+  };
   return (
     <div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ ...S.label, marginBottom: 10 }}>VACATION MODE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <button
+            style={{ ...(vac.enabled ? S.btnPrimary : S.btn), padding: '6px 14px', fontSize: 11 }}
+            onClick={() => onChangeVacation({ ...vac, enabled: !vac.enabled })}
+          >
+            {vac.enabled ? '✓ Vacation Mode ON' : 'Vacation Mode OFF'}
+          </button>
+          <span style={{ color: '#5a5a7a', fontSize: 10 }}>No overnight penalties while you're away from home</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ color: '#8a8aae', fontSize: 11, width: 36 }}>From</span>
+          <input
+            type="date"
+            disabled={!vac.enabled}
+            style={dateInput}
+            value={dateKeyToInputValue(vac.start)}
+            max={vac.end ? dateKeyToInputValue(vac.end) : undefined}
+            onChange={e => onChangeVacation({ ...vac, start: inputValueToDateKey(e.target.value) })}
+          />
+          <span style={{ color: '#8a8aae', fontSize: 11, width: 24 }}>To</span>
+          <input
+            type="date"
+            disabled={!vac.enabled}
+            style={dateInput}
+            value={dateKeyToInputValue(vac.end)}
+            min={vac.start ? dateKeyToInputValue(vac.start) : undefined}
+            onChange={e => onChangeVacation({ ...vac, end: inputValueToDateKey(e.target.value) })}
+          />
+        </div>
+        <div style={{ color: '#5a5a7a', fontSize: 10 }}>
+          Leave the dates blank to pause penalties indefinitely until you switch it off. Kill streaks are frozen, not reset, on covered days.
+        </div>
+      </div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ ...S.label, marginBottom: 10 }}>WEEK STARTS ON</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -903,6 +946,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
   const [weekStartDay, setWeekStartDay] = useState(initialConfig?.weekStartDay ?? 1);
   const [confirmChores, setConfirmChores] = useState(initialConfig?.confirmChores ?? false);
   const [displayOrientation, setDisplayOrientation] = useState(initialConfig?.displayOrientation ?? 'landscape');
+  const [vacation, setVacation] = useState(initialConfig?.vacation ?? { enabled: false, start: '', end: '' });
   const [powerUpSettings, setPowerUpSettings] = useState(
     initialConfig?.powerUpSettings ?? { ...DEFAULT_POWER_UP_SETTINGS }
   );
@@ -978,6 +1022,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
       confirmChores,
       powerUpSettings,
       displayOrientation,
+      vacation,
     });
   }
 
@@ -1052,6 +1097,7 @@ export default function SetupWizard({ onComplete, onCancel, initialConfig }) {
                 weekStartDay={weekStartDay} onChangeWeekStartDay={setWeekStartDay}
                 confirmChores={confirmChores} onToggleConfirmChores={() => setConfirmChores(v => !v)}
                 displayOrientation={displayOrientation} onChangeDisplayOrientation={setDisplayOrientation}
+                vacation={vacation} onChangeVacation={setVacation}
               />
             )}
           </div>

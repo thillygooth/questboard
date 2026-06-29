@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { ALL_CHORES, REWARDS, BADGES, MONSTER_TAUNTS, POWER_UPS, OVERKILL_CHARGE_GOAL, POWER_TOKEN_CAP, POWER_TOKEN_CHOICES } from './data';
-import { todayKey, weekKey, monthKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, getTitleForBadge, isPowerUpActive, getActivePowerUps, cleanExpiredPowerUps, checkPowerUpTriggers, choreDoneKey, isChoreDoneForPlayer, initDungeonMap, dungeonMoveResult, generateFloor } from './logic';
+import { todayKey, weekKey, monthKey, dateSeededMonster, getLevelFromXP, critChanceForLevel, luckForLevel, streakMultiplier, dailyBonusChoreId, rollLoot, checkNewBadges, getPlayerTitle, getTitleForBadge, isPowerUpActive, getActivePowerUps, cleanExpiredPowerUps, checkPowerUpTriggers, choreDoneKey, isChoreDoneForPlayer, initDungeonMap, dungeonMoveResult, generateFloor, isVacationDay } from './logic';
 import PlayerCard from './components/PlayerCard';
 import ChoreGrid from './components/ChoreGrid';
 import RewardGrid from './components/RewardGrid';
@@ -50,7 +50,7 @@ function makeDefaultState(players) {
   };
 }
 
-function applyAutoResets(raw, players, weekStartDay = 1) {
+function applyAutoResets(raw, players, weekStartDay = 1, vacation = null) {
   const state = { ...makeDefaultState(players), ...raw };
 
   // migrate old points field to gold
@@ -71,6 +71,9 @@ function applyAutoResets(raw, players, weekStartDay = 1) {
         const dmg = (state.monsterDamage?.[pl.id]?.[yKey]) || 0;
         if (dmg >= m.maxHP) {
           newStreaks[pl.id] = (newStreaks[pl.id] || 0) + 1;
+        } else if (isVacationDay(yKey, vacation)) {
+          // Away from home: the monster doesn't strike. No gold penalty, and the
+          // kill streak is left frozen (newStreaks already holds the prior value).
         } else {
           newStreaks[pl.id] = 0;
           const pKey = `${pl.id}_${yKey}`;
@@ -256,7 +259,7 @@ export default function App() {
 
         const stateRes = await fetch(`${API}/state`);
         const fetched = await stateRes.json();
-        const { state: after, changed, penaltyMsgs } = applyAutoResets(fetched, cfg.players, cfg.weekStartDay ?? 1);
+        const { state: after, changed, penaltyMsgs } = applyAutoResets(fetched, cfg.players, cfg.weekStartDay ?? 1, cfg.vacation);
 
         if (changed) {
           await fetch(`${API}/state`, {
@@ -293,13 +296,13 @@ export default function App() {
         && fetched.monthKey === monthKey();
       if (text === lastRawRef.current && datesCurrent) return;
       lastRawRef.current = text;
-      const { state: after, changed } = applyAutoResets(fetched, players, wsd);
+      const { state: after, changed } = applyAutoResets(fetched, players, wsd, config?.vacation);
       if (changed) await saveState(after);
       setServerState(after);
     } catch (e) {
       console.error('Poll failed', e);
     }
-  }, [players, saveState, config?.weekStartDay]);
+  }, [players, saveState, config?.weekStartDay, config?.vacation]);
 
   useEffect(() => {
     if (!config) return;
@@ -816,7 +819,7 @@ export default function App() {
 
   const handleSetupComplete = useCallback(async (wizardConfig) => {
     const freshState = makeDefaultState(wizardConfig.players);
-    const { state: after } = applyAutoResets(freshState, wizardConfig.players, wizardConfig.weekStartDay ?? 1);
+    const { state: after } = applyAutoResets(freshState, wizardConfig.players, wizardConfig.weekStartDay ?? 1, wizardConfig.vacation);
     await Promise.all([
       fetch(`${API}/config`, {
         method: 'POST',

@@ -307,6 +307,50 @@ export function getTitleForBadge(badgeId) {
   return TITLES.find(t => t.badge === badgeId)?.title ?? null;
 }
 
+// ── Vacation mode ───────────────────────────────────────────────────────────────
+// When a family is away from home they shouldn't be penalised for missed chores.
+// Internally a day is keyed as `${year}-${monthIndex}-${date}` (0-indexed month,
+// no zero-padding — same shape as todayKey()). HTML <input type="date"> instead
+// yields ISO `YYYY-MM-DD`, so the two helpers below translate between them.
+
+function parseDateKey(key) {
+  if (!key || typeof key !== 'string') return null;
+  const [y, m, d] = key.split('-').map(Number);
+  if ([y, m, d].some(n => Number.isNaN(n))) return null;
+  return new Date(y, m, d); // m is 0-indexed to match todayKey()/getMonth()
+}
+
+// Internal day key -> value for an <input type="date"> (ISO, 1-indexed month).
+export function dateKeyToInputValue(key) {
+  const d = parseDateKey(key);
+  if (!d) return '';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// <input type="date"> value (ISO) -> internal day key (0-indexed month).
+export function inputValueToDateKey(value) {
+  if (!value || typeof value !== 'string') return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some(n => Number.isNaN(n))) return '';
+  return `${y}-${m - 1}-${d}`;
+}
+
+// Is the given internal day key covered by an enabled vacation window?
+// An enabled vacation with no dates set means "away indefinitely" (covers any
+// day) until it is turned off; a start and/or end narrows it to that range.
+export function isVacationDay(dateKey, vacation) {
+  if (!vacation || !vacation.enabled) return false;
+  const day = parseDateKey(dateKey);
+  if (!day) return false;
+  const start = parseDateKey(vacation.start);
+  const end = parseDateKey(vacation.end);
+  if (start && day < start) return false;
+  if (end && day > end) return false;
+  return true;
+}
+
 // ── Solo/party chore helpers ───────────────────────────────────────────────────
 // Solo chores use a compound key "choreId:playerId" so each player tracks independently.
 // Note: mode 'solo' is shown in the UI as "ALL" (everyone does their own); mode 'party' is
