@@ -1385,9 +1385,9 @@ body.crt::after {
 .solo-badge {
   font-family: var(--pixel);
   font-size: 7px;
-  color: #f5a0c0;
-  background: rgba(180,60,100,0.18);
-  border: 1px solid rgba(180,60,100,0.4);
+  color: #8dc447;
+  background: rgba(110,160,60,0.18);
+  border: 1px solid rgba(110,160,60,0.4);
   padding: 1px 4px;
   border-radius: 2px;
   margin-left: 4px;

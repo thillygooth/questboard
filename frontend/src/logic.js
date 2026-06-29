@@ -309,6 +309,8 @@ export function getTitleForBadge(badgeId) {
 
 // ── Solo/party chore helpers ───────────────────────────────────────────────────
 // Solo chores use a compound key "choreId:playerId" so each player tracks independently.
+// Note: mode 'solo' is shown in the UI as "ALL" (everyone does their own); mode 'party' is
+// shown as "1P" (one person does it for the whole party). Labels were swapped to match intuition.
 
 export function choreDoneKey(chore, playerId) {
   return (chore.mode === 'solo') ? `${chore.id}:${playerId}` : chore.id;
