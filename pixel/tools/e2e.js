@@ -54,6 +54,30 @@ console.log('run started, overlay dismissed');
 await page.waitForTimeout(3500); // countdown is 3s on easy
 console.log('countdown done, clock reads', await page.textContent('#hud-time'));
 
+// The magnifying glass: move the mouse and confirm the lens layer actually has
+// something on it, and that it follows.
+await page.mouse.move(960, 540);
+await page.waitForTimeout(120);
+const lensPixels = () => page.evaluate(() => {
+  const c = document.getElementById('lens');
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let opaque = 0, sumX = 0, sumY = 0;
+  for (let i = 3, p = 0; i < d.length; i += 4, p++) {
+    if (d[i] > 8) { opaque++; sumX += p % c.width; sumY += (p / c.width) | 0; }
+  }
+  return { opaque, cx: opaque ? Math.round(sumX / opaque) : -1, cy: opaque ? Math.round(sumY / opaque) : -1 };
+});
+const atA = await lensPixels();
+console.log(`  glass drawn: ${atA.opaque} px, centred (${atA.cx}, ${atA.cy})`);
+await page.mouse.move(600, 400);
+await page.waitForTimeout(120);
+const atB = await lensPixels();
+const followed = atA.cx !== atB.cx || atA.cy !== atB.cy;
+console.log(`  after moving the mouse: centred (${atB.cx}, ${atB.cy}) ${followed ? '(followed)' : '(DID NOT FOLLOW)'}`);
+if (atA.opaque === 0) errors.push('lens layer is empty — no magnifying glass drawn');
+if (!followed) errors.push('lens did not follow the mouse');
+
+
 // Drive the pixel: hold a direction and see moves accumulate
 for (const key of ['ArrowRight','ArrowDown','ArrowLeft','ArrowUp']) {
   await page.keyboard.down(key);
@@ -93,7 +117,18 @@ await page.click('#board-back');
 await page.click('button[data-mode="excruciating"][data-ranked="0"]');
 await page.waitForSelector('#hud:not(.hidden)', { timeout: 20000 });
 await page.waitForTimeout(150);
-await page.screenshot({ path: 'tools/out/e2e-hard-fog.png' });
+await page.mouse.move(900, 500);
+await page.waitForTimeout(80);
+const excruciatingLens = await page.evaluate(() => {
+  const c = document.getElementById('lens');
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let opaque = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 8) opaque++;
+  return opaque;
+});
+console.log(`  lens layer: ${excruciatingLens} px ${excruciatingLens === 0 ? '(no glass, correct)' : '(SHOULD BE EMPTY)'}`);
+if (excruciatingLens > 0) errors.push('Excruciating drew a magnifying glass; it must not have one');
+await page.screenshot({ path: 'tools/out/e2e-excruciating-fog.png' });
 const hudPixels = await page.evaluate(() => {
   const c = document.getElementById('field');
   const d = c.getContext('2d').getImageData(1680, 940, 240, 140).data;

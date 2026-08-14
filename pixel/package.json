@@ -8,7 +8,8 @@
     "verify": "node tools/verify.js",
     "preview": "node tools/preview.js",
     "frame": "node tools/frame.js",
-    "e2e": "node tools/e2e.js"
+    "e2e": "node tools/e2e.js",
+    "lens": "node tools/lens.js"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

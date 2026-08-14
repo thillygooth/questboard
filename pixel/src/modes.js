@@ -25,6 +25,9 @@ export const MODES = {
     inputPolicy: 'free',
     allowReversal: true,
 
+    // Clean glass, gentle barrel distortion. See DESIGN.md §2.
+    lens: { radius: 115, magnification: 4, distortion: 0.9 },
+
     studyMs: 3000,
     fogRadius: Infinity,
     sonar: false,
@@ -51,6 +54,14 @@ export const MODES = {
     inputPolicy: 'buffer1',
     allowReversal: true,
 
+    // Worse optics and a lens nobody has cleaned in years.
+    lens: {
+      radius: 115,
+      magnification: 4,
+      distortion: 1.7,
+      dirt: { smudges: 7, specks: 80 },
+    },
+
     studyMs: 1000,
     fogRadius: Infinity,
     sonar: false,
@@ -76,6 +87,8 @@ export const MODES = {
     corridorFollow: true,
     inputPolicy: 'strict',
     allowReversal: true, // see DESIGN.md §13 — forbidding it removes the win state
+
+    lens: null, // Use a real one.
 
     studyMs: 0,
     fogRadius: 70,

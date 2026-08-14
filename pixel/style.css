@@ -13,14 +13,21 @@ html, body {
   overflow: hidden;
 }
 
-#field {
+#field, #lens {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   image-rendering: pixelated;
-  background: #000;
 }
+#field { background: #000; }
+
+/* The glass sits on its own layer so the field's dirty-rect painting never has
+   to know about it, and never has to clean up after it. */
+#lens { pointer-events: none; }
+
+/* The glass is the cursor. */
+body.playing { cursor: none; }
 
 #hud {
   position: fixed;

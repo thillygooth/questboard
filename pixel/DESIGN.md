@@ -4,7 +4,7 @@
 > the only way out is the single white opening in the wall that surrounds the world.
 
 **Status:** playable end to end. Generator, solver, collapse, renderer, simulation,
-input, leaderboard and sonar are built and verified. See §15.
+input, magnifying glass, leaderboard and sonar are built and verified. See §15.
 **Scope:** standalone project. No dependency on Questboard; lives in `pixel/` for now.
 
 ---
@@ -63,8 +63,56 @@ This means the game requires a display of at least 1920 × 1080 physical pixels 
 should run fullscreen. On a 2× HiDPI display the field occupies a 960 × 540 CSS-pixel
 window: physically small, pixel-exact, and correct.
 
-A 2× zoom accessibility option is allowed but is **separately ranked** — magnification
-is a straightforward difficulty reduction and should not share a leaderboard.
+### The magnifying glass
+
+At one device pixel per maze cell the field is legible in principle and unreadable in
+practice: 1920 × 1080 of 1px maze reads as fine grey static. The first two modes hand
+you a **magnifying glass that follows the mouse**, and it is what makes the field
+something a person can actually navigate.
+
+| | Unpleasant | Miserable | Excruciating |
+|---|---|---|---|
+| Glass | clean | filthy | **none** |
+| Radius | 115 px | 115 px | — |
+| Centre magnification | 4.0× | 4.0× | — |
+| Rim magnification | 2.11× | 1.48× | — |
+| Patch visible through it | 109 px | 155 px | — |
+| Grime | none | 7 smudges, 80 specks | — |
+
+Sampling is nearest-neighbour, always. This is a game about individual pixels and any
+interpolation would invent corridors that are not there.
+
+**Barrel distortion.** The sampling reach grows with radius — `scale = (1 + k·r²) / M` —
+so the centre magnifies hardest and the rim compresses, which is what a real lens does
+and why the edge of one is useless for reading anything. Miserable's `k` is nearly twice
+Unpleasant's, so its rim is barely magnified at all and the usable part of the glass is
+a smaller disc in the middle.
+
+**Grime, not aberration.** Chromatic aberration was built for Miserable and removed. On
+1px binary detail it does not fringe edges, it decorrelates the channels outright: at
+the rim the per-channel offset lands around 4.6px against features that are 1px wide, so
+red, green and blue sample unrelated corridors and the glass fills with full-saturation
+confetti. It destroys the information rather than degrading it. Grime is the honest way
+to make glass bad — smudges cost contrast without inventing detail, so the maze is still
+there and you simply have to work to resolve it.
+
+**The mouse is a viewing device and nothing else.** It never reaches the simulation, so
+a run stays fully described by `(seed, mode, input ticks)` and replay validation (§12) is
+untouched. What it does change is that you steer with one hand and look with the other,
+which on Miserable — where you cannot stop and the speed ramps — is most of the
+difficulty.
+
+**Excruciating has no glass.** Use a real one. That is the whole joke, and it is also
+the thing that justifies rendering at 1:1 in the first place.
+
+The glass is drawn on its own canvas stacked over the field, cleared and redrawn each
+frame. Keeping it off the field buffer is structural rather than tidy: the field is
+painted by dirty rectangles that only know about the player, the fog and collapse, and a
+lens smeared into that buffer would leave a trail nothing was tracking.
+
+A 2× zoom accessibility option remains allowed but is **separately ranked** — whole-field
+magnification is a flat difficulty reduction in a way the glass is not, since the glass
+costs you the attention of aiming it.
 
 ### Frame budget
 
@@ -268,6 +316,7 @@ death.
 | Reversal | yes | yes | yes |
 | Study countdown | 3 s | 1 s | single frame |
 | Visibility | whole field | whole field | 70 px lit radius |
+| Magnifying glass | clean, 4.0× | filthy, 4.0×, worse warp | none — use a real one |
 | Sonar | no | no | yes (§8.3) |
 | Controls | fixed arrows | fixed arrows | **displayed HUD, randomly reassigned** (§8.1) |
 | Decoy gaps | none | 1–2, unreachable | 2–3, reachable and lethal (§8.2) |
@@ -556,6 +605,9 @@ note at the top of `src/field.js` for why, and why the wall reads 2px thick on t
 | `REMAP_INTERVAL` | 15–35 s | Excruciating, seeded random |
 | `REMAP_COOLDOWN` | 3 s | minimum between reassignments |
 | `SONAR_HZ` | 200 → 1200 | far → near |
+| `lens.radius` | 115 px ✓ | Unpleasant and Miserable |
+| `lens.magnification` | 4.0 ✓ | at the centre; the rim is much less |
+| `lens.distortion` | 0.9 / 1.7 / — ✓ | Unpleasant / Miserable / Excruciating |
 | `blinkDecoys.oneIn` | 1000 ✓ | corridor pixels blinking as the player; ~7 in the fog disc |
 | `DECOY_PERIOD` | 900–1800 ms ✓ | per-decoy, against the player's 600 ms |
 
@@ -613,6 +665,7 @@ pixel/
     game.js         fixed-timestep loop, state machine     ✓ built
     input.js        keymap, buffering policy, reassignment ✓ built
     audio.js        sonar                                  ✓ built
+    lens.js         magnifying glass, distortion, grime    ✓ built
     board.js        leaderboards, one life, replay stub    ✓ built
     main.js         browser shell: screens and the loop    ✓ built
   tools/
@@ -621,6 +674,7 @@ pixel/
     frame.js        rendered frames + dirty-rect check     ✓ built
     playthrough.js  perfect player under each mode's rules ✓ built
     e2e.js          browser smoke test                     ✓ built
+    lens.js         glass rendered to PNG, optics measured  ✓ built
     png.js          indexed and truecolour PNG encoders    ✓ built
 ```
 
@@ -630,6 +684,7 @@ npm run preview    # node tools/preview.js [mode] [isoDate] → tools/out/*.png
 npm run frame      # node tools/frame.js   [mode] [isoDate] → rendered frames
 npm run playthrough # perfect player completes every mode; idle player survives
 npm run e2e        # real Chromium: menu → run → death → leaderboard
+npm run lens       # render the glass per mode and measure its optics
 ```
 
 ---

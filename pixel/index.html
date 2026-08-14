@@ -9,6 +9,7 @@
 <body>
 
 <canvas id="field" width="1920" height="1080"></canvas>
+<canvas id="lens" width="1920" height="1080"></canvas>
 
 <div id="hud" class="hidden">
   <span id="hud-time">—</span>
@@ -42,17 +43,23 @@
     <p>You are drawn in exactly the colour of the walls. The blink is the only thing
       that tells you apart from the maze: you flicker black and white, between a wall
       that is not there and an opening that is not there.</p>
+    <p>At one pixel per pixel the field is fine grey static and nobody can read it.
+      The first two modes give you a <b>magnifying glass</b> that follows your mouse.
+      The mouse only ever changes what you can see — it never moves you. You steer
+      with one hand and look with the other.</p>
 
     <h3>UNPLEASANT — brutal but fair</h3>
     <p>You move one pixel per keypress and can stop and think for as long as you
       like. The whole field is visible. Nothing kills you that you did not do
-      yourself. The exit is marked green.</p>
+      yourself. The exit is marked green. The glass is clean, and bends the view
+      only slightly at its edge.</p>
 
     <h3>MISERABLE — fair core, cruel garnish</h3>
     <p>You cannot stop. The pixel runs, follows corridors on its own, and speeds up
       as the run goes on. The exit is not marked — it is one white opening in a black
       wall, and there are other openings that are not it. Those cost you time, not your
-      life. There is no pause, and leaving the window ends the run.</p>
+      life. There is no pause, and leaving the window ends the run. The glass warps
+      harder toward its rim, and nobody has cleaned it in years.</p>
 
     <h3>EXCRUCIATING — actively hostile</h3>
     <p>You see a 70-pixel circle around yourself and nothing else. A tone rises in
@@ -63,6 +70,7 @@
       in the bottom right. You are never lied to about it. You just have to be
       looking.</p>
     <p><b>Some gaps in the wall are not the exit, and in this mode they kill.</b></p>
+    <p><b>There is no magnifying glass.</b> If you want one, use a real one.</p>
 
     <button id="rules-back">Back</button>
   </section>

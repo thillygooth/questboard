@@ -7,9 +7,11 @@ import { MODE_IDS, getMode } from './modes.js';
 import { generateField } from './maze.js';
 import { Game, STATE, TICK_HZ } from './game.js';
 import { FieldRenderer, createCanvasSink, drawHud, blinkOn } from './render.js';
+import { Lens, createLensLayer } from './lens.js';
 import { dailySeed } from './rng.js';
 import { Sonar } from './audio.js';
 import { hasPlayedToday, recordRun, boardsFor, allTime, todayIso, stats } from './board.js';
+import { FIELD_W, FIELD_H } from './field.js';
 
 const MS_PER_TICK = 1000 / TICK_HZ;
 const $ = (id) => document.getElementById(id);
@@ -19,7 +21,13 @@ let game = null;
 let renderer = null;
 let sink = null;
 let sonar = null;
+let glass = null;
 let raf = 0;
+
+// Where the magnifying glass is pointed, in field pixels. The mouse is a viewing
+// device only — it never reaches the simulation, so replay validation (§12) is
+// unaffected by it.
+let lensAt = { x: FIELD_W / 2, y: FIELD_H / 2 };
 let lastMapping = '';
 let current = { mode: null, ranked: true, seed: 0, par: 0 };
 
@@ -54,6 +62,15 @@ function begin(modeId, ranked) {
   sink = createCanvasSink($('field'), renderer);
   sonar = new Sonar(mode.sonar);
   sonar.start();
+
+  // Start the glass over the player, so there is something to look at before the
+  // mouse has moved at all.
+  lensAt = { x: game.idx % FIELD_W, y: (game.idx / FIELD_W) | 0 };
+  glass = mode.lens
+    ? createLensLayer($('lens'), new Lens(mode.lens, seed), FIELD_W, FIELD_H)
+    : null;
+  if (!mode.lens) $('lens').getContext('2d').clearRect(0, 0, FIELD_W, FIELD_H);
+  document.body.classList.toggle('playing', Boolean(mode.lens));
 
   const rects = renderer.paintAll({ playerIdx: game.idx, blink: true, t: 0 });
   sink.blit(rects);
@@ -93,6 +110,10 @@ function begin(modeId, ranked) {
       }
     }
 
+    // The glass is drawn after the field, from the field's own pixels, so it
+    // magnifies exactly what is really there — blink, false blinks and all.
+    glass?.draw(renderer.pixels, lensAt.x, lensAt.y);
+
     sonar?.update(snap);
     updateHud(snap);
 
@@ -113,6 +134,9 @@ function updateHud(snap) {
 function finish() {
   cancelAnimationFrame(raf);
   sonar?.stop();
+  glass?.clear();
+  glass = null;
+  document.body.classList.remove('playing');
 
   const won = game.state === STATE.WON;
   const record = {
@@ -209,6 +233,15 @@ addEventListener('keydown', (e) => {
   game.keyDown(e.code);
 });
 addEventListener('keyup', (e) => game?.keyUp(e.code));
+
+addEventListener('mousemove', (e) => {
+  const rect = $('field').getBoundingClientRect();
+  if (rect.width === 0) return;
+  lensAt = {
+    x: (e.clientX - rect.left) * (FIELD_W / rect.width),
+    y: (e.clientY - rect.top) * (FIELD_H / rect.height),
+  };
+});
 addEventListener('blur', () => game?.blur());
 
 renderMenu();
