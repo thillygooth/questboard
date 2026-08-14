@@ -235,7 +235,10 @@ to forbid it in Hard, and it was considered and rejected — see §13.
 The player blinks in every mode: **400 ms on, 200 ms off.**
 
 While on, you are `#000000` and read as a wall. While off, you are `#ffffff` and read as
-open corridor. The pixel therefore flickers between "blocked" and "clear," which is both
+open corridor. Both are drawn explicitly, never by letting the underlying cell show
+through: deriving the off-phase from the corridor made the pixel blink black against
+`#c8c8c8` on Hard, where the corridors are dimmed — and on Hard the blink is the only
+way to find yourself at all. The pixel therefore flickers between "blocked" and "clear," which is both
 how you locate yourself in a field of half a million pixels and why the maze immediately
 around you is the part you read worst.
 

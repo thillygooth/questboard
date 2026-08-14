@@ -33,9 +33,9 @@ const DIM = rgb(200, 200, 200);
  * Hard dims the corridors to #c8c8c8, lowering contrast across the whole field.
  */
 export const PALETTES = {
-  easy: { wall: BLACK, corridor: WHITE, exit: rgb(34, 255, 34), markExit: true },
-  medium: { wall: BLACK, corridor: WHITE, exit: WHITE, markExit: false },
-  hard: { wall: BLACK, corridor: DIM, exit: DIM, markExit: false },
+  easy: { wall: BLACK, corridor: WHITE, exit: rgb(34, 255, 34), markExit: true, playerOn: BLACK, playerOff: WHITE },
+  medium: { wall: BLACK, corridor: WHITE, exit: WHITE, markExit: false, playerOn: BLACK, playerOff: WHITE },
+  hard: { wall: BLACK, corridor: DIM, exit: DIM, markExit: false, playerOn: BLACK, playerOff: WHITE },
 };
 
 export const BLINK_ON_MS = 400;
@@ -56,7 +56,6 @@ export class FieldRenderer {
     this.exitIdx = field.exitIdx;
     this.mode = mode;
     this.palette = PALETTES[mode.id] ?? PALETTES.medium;
-    this.player = this.palette.wall;
 
     this.fogRadius = mode.fogRadius ?? Infinity;
     this.fogInner = Number.isFinite(this.fogRadius)
@@ -74,7 +73,11 @@ export class FieldRenderer {
     const idx = y * FIELD_W + x;
 
     let base;
-    if (idx === state.playerIdx && state.blink) base = this.player;
+    // The player is always drawn explicitly, in its own two colours — never by
+    // falling through to whatever is underneath. Deriving the off-phase from the
+    // corridor made the pixel blink black against #c8c8c8 on Hard rather than
+    // black against white, and on Hard the blink is the only way to find it.
+    if (idx === state.playerIdx) base = state.blink ? this.palette.playerOn : this.palette.playerOff;
     else if (idx === this.exitIdx && this.palette.markExit) base = this.palette.exit;
     else base = this.grid[idx] === CORRIDOR ? this.palette.corridor : this.palette.wall;
 

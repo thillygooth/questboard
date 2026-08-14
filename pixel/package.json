@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "A maze game in which you are one white pixel.",
+  "description": "A maze game in which you are one black pixel.",
   "scripts": {
     "verify": "node tools/verify.js",
     "preview": "node tools/preview.js",
