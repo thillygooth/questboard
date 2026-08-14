@@ -89,15 +89,36 @@ human can perceive any of it inside 16.6833 ms.
 - **159 x 119 = 18,921 cells.**
 - A perfect (spanning-tree) maze has 18,920 corridor links, giving
   **37,841 lit corridor pixels — about 49% of the screen.**
-- **Canonical generator: randomized DFS.** It maximizes solution length and
-  turn count, which is what we want. Kruskal and Wilson's are exposed for
-  comparison; both produce dramatically shorter solutions.
+- **Canonical generator: randomized DFS**, for the surrounding maze. It
+  maximizes corridor length and dead-end density, which is what we want for
+  everything that is *not* the solution. Kruskal and Wilson's are exposed for
+  comparison. The solution path itself is not left to the generator — see
+  below.
 - **The maze is generated in full at t=0.** The beam only *reveals*; it never
   *creates*. Collision tests against the true maze, so you can die against a
   wall that has not been drawn yet. Without this rule the collision model is
   undefined.
 - Spawn and exit are uniformly random periphery gaps, each connected to the
   lattice. **No minimum path length is enforced** — see §9.
+
+### The solution path is constructed first
+
+Pure random generation would produce solutions with hundreds or thousands of
+branch decisions, which no input device can express in one frame (§5). So
+generation is inverted:
+
+1. Route a solution path between two periphery gaps with **at most
+   `DECISION_BUDGET` junction decisions** (133 — see §5).
+2. Grow the remainder of the maze around it as a spanning tree.
+
+The result is still a full 320 x 240 perfect maze with 1px corridors and the
+usual thicket of dead ends. Only its *solution* is constrained. The maze does
+not look easier, and under fog it does not play easier — it is simply
+expressible.
+
+**The same constraint applies at every difficulty**, so a given seed is the
+same maze on EASY and on ONE FRAME. You can study a seed at leisure and then
+attempt it at 1x.
 
 ---
 
@@ -110,11 +131,55 @@ human can perceive any of it inside 16.6833 ms.
   one legal choice.
 - Step period is per-difficulty (§7). At 1x it is the pixel period, 164.4 ns.
 
+### Buffered junction input
+
+Input does **not** take effect at a timestamp. It is buffered and consumed at
+the next branch:
+
+- **Forced bend** — the corridor turns but offers only one continuation. The
+  pixel follows it automatically. **Costs no input.**
+- **Junction** — two or more continuations. Consumes one buffered direction.
+- **Dead end** — no continuation. This is a wall, and walls kill.
+
+This is load-bearing, not a convenience. See the derivation below.
+
+### Why timing-precise input is impossible
+
+The obvious model — a timestamped sequence of direction changes — cannot
+work at 1x. If a turn must land within one step period, the player can only
+move one pixel per input opportunity. At the USB ceiling of 125 us that is
+**133 pixels per frame**, and crossing a 320 x 240 field takes at least 560
+pixels of Manhattan distance. The player could not reach the far edge, let
+alone navigate.
+
+Buffering decouples input rate from movement rate. The pixel runs at the
+full 164.4 ns step period while inputs arrive at whatever rate the hardware
+allows, so route *length* stops mattering and only **decision count** does.
+
+### The decision budget
+
+USB HID delivers at most one report per poll interval, which caps decisions
+per frame regardless of the movement model:
+
+| USB HID mode | Poll interval | Inputs per 16.6833 ms frame |
+|---|---|---|
+| USB 1.1 legacy | 8 ms | 2 |
+| USB 2.0 full-speed | 1 ms | 16 |
+| **USB 2.0 high-speed** | **125 us** | **133** |
+
+**`DECISION_BUDGET = 133`**, taken from the USB 2.0 high-speed ceiling —
+the real limit of the fastest keyboard that exists. Maze generation is
+constrained to it (§4).
+
+A report is a full state snapshot of which keys are down, so any of the four
+directions (or none) is expressible on any poll. Consecutive *different*
+directions cost one report each.
+
 ### Input is a tape
 
-Input is modelled as a **timestamped sequence of direction changes**. Live
-arrow-key play writes a tape in real time; Compile Mode (§8) authors one at
-leisure. A human keyboard is simply a device that writes very bad tapes.
+Input is still modelled as a **tape** — now a sequence of junction decisions
+rather than timestamped direction changes. Live arrow-key play writes one in
+real time; Compile Mode (§8) authors one at leisure.
 
 This single abstraction gives the solver, the replay, and the feasibility
 argument for free.
@@ -139,7 +204,7 @@ the maze.
 **As a light** (ONE FRAME): the beam rations information. You navigate what
 you can see, and you can only see what has been painted.
 
-**As a floor** (ONE FRAME and HARD): **you may not occupy a pixel the beam
+**As a floor** (ONE FRAME only): **you may not occupy a pixel the beam
 has not yet painted.** Attempting to does not kill you — you *stall in place*
 until it is painted, then continue. Free, automatic, costs no instruction.
 
@@ -182,36 +247,43 @@ All of these are free consequences of a raster scan. None were designed.
 
 ## 7. Difficulty
 
-Four rungs in **two families**. They are not a single parameter; see the
-derivation below.
+Three rungs. Every difficulty plays the **same maze** for a given seed
+(§4) — only the clock and the step period change.
 
 | Level | Step period | Time limit | Beam role | Winnable by |
 |---|---|---|---|---|
-| **EASY** | ~42 ms | none | intro flourish | anyone patient |
-| **MEDIUM** | ~42 ms | reaction-par | intro flourish | a *perfect* human |
-| **HARD** | 1 ms | 101.5 s | light + floor | a memorized or scripted run |
-| **ONE FRAME** | 164.4 ns | 16.6833 ms | light + floor | hardware at >=6 MHz |
+| **EASY** | ~12 ms | none | intro flourish | anyone patient |
+| **MEDIUM** | ~12 ms | reaction-par (~47 s) | intro flourish | a *perfect* human |
+| **ONE FRAME** | 164.4 ns | 16.6833 ms | light + floor | a machine driving an 8 kHz USB keyboard |
 
-**Family A — ONE FRAME and HARD** are true uniform dilations of each other.
-Every constant scales by the same factor; the beam relationship is preserved
-exactly.
+EASY and MEDIUM are parameterized around human reaction time. ONE FRAME is
+parameterized around the USB HID ceiling. They are not a single scalar; see
+below.
 
-**Family B — EASY and MEDIUM** are a separate parameterization built around
-human reaction time. The causality rule is absent (see below).
-
-### Why the families cannot be unified
+### Why the rungs are not one parameter
 
 Preserving the ONE FRAME beam relationship (~423 steps per row) at a
-reaction-calibrated step period of ~42 ms requires a row period of ~17.8 s,
-which makes the frame **84 minutes**. Compressing the frame to a playable
-~3 minutes instead makes the beam ~28x *more* binding than at 1x, so the
+reaction-calibrated step period of ~12 ms requires a row period of ~5 s,
+which makes the frame **20 minutes**. Compressing the frame to a playable
+~1 minute instead makes the beam far *more* binding than at 1x, so the
 wavefront rather than reaction sets the pace.
 
 Either way, reaction stops being the binding constraint — which contradicts
 the definition of MEDIUM. **The causality rule is therefore exclusive to
-Family A.** It is a mechanic that only exists at machine timescales, because
-it requires the player to be much faster than the beam, which only a human
-is not.
+ONE FRAME.** It is a mechanic that only exists at machine timescales,
+because it requires the player to be much faster than the beam, which only a
+human is not.
+
+### The rung that was removed
+
+An earlier draft had a fourth rung, HARD, defined as "dilated until a 1 kHz
+keyboard can just express a turn." Calibrating ONE FRAME to the USB ceiling
+absorbed that principle — the keyboard floor *is* ONE FRAME now — and with
+forced bends costing no input (§5), HARD's arithmetic (~33 s) collapsed into
+MEDIUM's (~47 s) anyway.
+
+Arbitrary intermediate timescales remain available through the dilation
+control (§10), which is a continuous knob and does not need to be a rung.
 
 ---
 
@@ -254,68 +326,50 @@ actually measures.
 
 Decision points on a 1px perfect maze are not equal:
 
+Because forced bends auto-follow (§5), only genuine branches cost the player
+anything:
+
 | Event | What the player does | Cost |
 |---|---|---|
 | Straight corridor | nothing | 0 |
-| **Forced bend** | correct key at the right pixel, no choice; anticipatory motor act | **~150 ms** |
+| Forced bend | nothing — the pixel follows the corridor | **0** |
 | **Junction** | choice reaction, 2-3 live options (Hick's law) | **~350 ms** |
 | Dead end | never occurs on the optimal route | — |
 
 ```
-T_par = t_start + SUM(bends x 150ms) + SUM(junctions x 350ms)
+T_par = t_start + SUM(junctions x 350ms)
 
 s     = T_par / path_length          (step period)
 ```
 
 The second equation is not an independent choice. Dividing the deadline by
-the route length automatically makes the median straight run take exactly one
-reaction interval — so reaction is the binding constraint by construction,
-and the two parameters are self-consistent.
+the route length automatically makes the median run *between junctions* take
+exactly one reaction interval — so reaction is the binding constraint by
+construction, and the two parameters are self-consistent.
 
 **Illustrative numbers** (route stats are placeholders until the analyzer
 exists — see §12):
 
 | | |
 |---|---|
-| Route | 4,000 steps, 800 turns (560 bends / 240 junctions) |
-| 560 bends x 150 ms | 84 s |
-| 240 junctions x 350 ms | 84 s |
-| **T_par** | **168 s** |
-| Step period `s` | 42 ms (~24 px/s) |
-| Shipped deadline (k = 1.15) | 193 s |
+| Route | 4,000 px, at the 133-junction budget |
+| 133 junctions x 350 ms | 46.6 s |
+| **T_par** | **~47 s** |
+| Step period `s` | ~12 ms (~86 px/s) |
+| Mean run between junctions | ~30 px = ~350 ms |
+| Shipped deadline (k = 1.15) | ~54 s |
 
-So MEDIUM is roughly a **three-minute sustained precision run at the edge of
-human reaction, with one life.** Failing at turn 799 returns you to the
+So MEDIUM is roughly a **one-minute sustained precision run at the edge of
+human reaction, with one life.** Failing at junction 132 returns you to the
 start. In shape it is a no-miss rhythm chart with instant death.
 
+Auto-follow shortened this level considerably — an earlier draft charged
+150 ms per forced bend and landed near three minutes. Charging only for real
+decisions is both more honest and a tighter level.
+
 **Slack.** `k = 1.15` ships as default. `k = 1.0` — the literal
-reaction-optimum, with no room for a single stutter across ~800 events — is
-exposed as **MEDIUM (PAR)** and is the scored mode.
-
----
-
-### HARD — the hardware floor
-
-A uniform dilation of ONE FRAME by **6,083x**, chosen as the point where a
-1 kHz keyboard can just express a turn.
-
-| | ONE FRAME | HARD |
-|---|---|---|
-| Step period | 164.4 ns | **1 ms** |
-| Frame | 16.6833 ms | **101.5 s** |
-| Row period | 69.5 us | **423 ms** |
-| Steps per row | 423 | 423 |
-
-Everything scales together, so the beam-as-floor mechanic behaves
-identically. Too fast to react to, slow enough for the input hardware to
-express.
-
-Which makes HARD **the level Compile Mode exists to beat.** Author a tape at
-leisure, execute it at 6,083x. That is the intended solution, not a
-workaround.
-
-> HARD was not requested. It costs one scalar and completes the ladder, but
-> it is trivially removable if the ladder is better at three rungs.
+reaction-optimum, with no room for a single stutter across 133 decisions —
+is exposed as **MEDIUM (PAR)** and is the scored mode.
 
 ---
 
@@ -324,15 +378,35 @@ workaround.
 1x. The full premise: fog of war, beam as light and floor, 16.6833 ms,
 one life.
 
-**ONE FRAME is solvable. It is not human-playable.** The distinction is the
-entire point of the project, and the name is a constraint rather than a
-verdict:
+**ONE FRAME is calibrated to the USB HID ceiling, not beyond it.** The level
+is defined as *the hardest maze a USB keyboard can express in one frame* —
+a principled boundary rather than an arbitrary impossibility. The maze
+generator is constrained to exactly that budget (§4).
+
+| | |
+|---|---|
+| Decisions required | 133 |
+| Delivered over | 16.6833 ms |
+| **Required input rate** | **~7,980 decisions/second** |
+| 8 kHz USB HID supplies | 8,000 polls/second |
+
+The margin is about 20 polls across the whole frame. Nothing is wasted, and
+nothing is impossible.
+
+**It is solvable, and not human-playable.** That distinction is the entire
+point of the project, and the name is a constraint rather than a verdict:
 
 - The maze is a spanning tree, so a path always exists.
 - A winning tape always exists and can be computed.
-- That tape executes correctly on hardware with sufficient timestamp
-  resolution (~6 MHz).
-- No human and no USB HID device can express it.
+- That tape fits inside the decision budget by construction, so **commodity
+  hardware can execute it** — an 8 kHz keyboard driven by a machine, no
+  custom silicon required.
+- No human can produce 7,980 correct decisions per second. The ceiling is
+  roughly 20 keypresses per second, and far fewer when each one is a choice.
+
+The gap is about **400x on raw keypress rate and ~2,000x on decisions**, and
+it is the only thing standing between a player and a win. Every other barrier
+has been removed deliberately.
 
 The tape replay mode (§10) is therefore not a curiosity — it is the
 **demonstration that the level is real.** It shows YOU WIN, at full speed,
@@ -343,13 +417,14 @@ in one frame.
 ## 8. Compile Mode
 
 An orthogonal axis, not a difficulty. You pick a **level** and an **input
-method** (live arrows / authored tape). It is the intended way to beat HARD.
+method** (live arrows / authored tape). It is the intended way to beat
+ONE FRAME.
 
 **Three phases**
 
 1. **STUDY** — untimed. Full maze, spawn, exit. Pan, zoom, trace routes. Take
    a week.
-2. **COMPILE** — author the tape against a budget. Nothing executes.
+2. **COMPILE** — author the tape. Nothing executes.
 3. **RUN** — one frame, real time, at 1x.
 
 At 1x the RUN phase is literally one frame of light: the screen flashes and
@@ -358,32 +433,38 @@ is a flash; the replay is the spectacle.**
 
 ### The tape
 
+Because forced bends auto-follow and only junctions consume input (§5), the
+tape is simply the sequence of branch decisions along your route:
+
 ```
-NORTH 47
-EAST   12
-NORTH   3
-WEST  118
+NORTH
+WEST
+NORTH
+EAST
+...
 ```
 
-Each instruction is a direction and a step count — which means **the tape is
-the run-length encoding of your route, and the instruction budget is a
-compression limit.** Minimum instruction count = straight segments = turns + 1.
+No step counts, no timestamps. **At most 133 entries.**
 
 The whole game in one sentence:
 
-> Find a path from spawn to exit whose RLE fits in N instructions and whose
-> beam-adjusted execution fits in one frame.
+> Find a path from spawn to exit that makes at most `DECISION_BUDGET`
+> branch decisions and whose beam-adjusted execution fits in one frame.
 
-**Counts are in steps, not time.** A stall consumes wall clock but not step
-count, so `NORTH 47` always moves 47 pixels, however long that takes.
+### The budget is hardware, par is the route
 
-### The budget is par
+Two different numbers, and the distinction matters:
 
-`N` comes from the solver's Pareto frontier over (instruction count,
-beam-adjusted execution time). The objectives fight: the minimum-turn route
-tends to be long and may blow the frame; the shortest route tends to have far
-too many turns. `N` is the instruction count of the cheapest route that is
-still time-feasible — **computed, provably optimal, tight.**
+- **`DECISION_BUDGET` = 133** is a hardware constant (§5). It is a hard
+  ceiling on any tape, and maze generation is constrained to respect it.
+- **Par** is the junction count of the cheapest time-feasible route on
+  *this* seed, computed by the solver. Always <= 133.
+
+The solver still works a Pareto frontier over (decisions, beam-adjusted
+time), because the objectives fight: the minimum-decision route tends to be
+long and may blow the frame, while the shortest route tends to branch more.
+Par is the decision count of the cheapest route that is still time-feasible —
+computed, provably optimal, tight.
 
 Par plus ~5-10% slack is the shipped budget, giving a scoring gradient. You
 cannot beat par; you can only reach it.
@@ -394,13 +475,22 @@ interesting number.
 
 ### What makes it hard
 
-- **Routing is genuinely hard.** Minimum-turn pathfinding under a time
+- **Routing is genuinely hard.** Minimum-decision pathfinding under a time
   constraint on a ~19,000-cell lattice is not a BFS you do in your head.
 - **Descent scheduling.** Every first-descent stalls you, and stall cost is
   invisible on the map. You must reason about paint times.
-- **Every count must be exact.** In text-authoring mode one off-by-one
-  anywhere in several hundred instructions is a wall collision.
 - **Cold run** (below).
+
+Note what is *not* on this list any more. An earlier draft used run-length
+encoded instructions with explicit step counts, which made a single
+off-by-one anywhere in the tape fatal. Buffered junction input removes step
+counts entirely. That was tedium rather than difficulty, and losing it is a
+straightforward improvement.
+
+It also makes Compile Mode considerably lighter than previously planned: a
+133-entry decision list is not hard to author. **The hard part was never
+authoring the tape — it was executing it**, and Compile Mode exists to move
+execution off human hands and onto the input hardware.
 
 ### Two categories
 
@@ -411,18 +501,14 @@ interesting number.
 
 Optional middle tier: three test runs, then commit.
 
-**Scoring:** instructions used against par, with time remaining at the exit
-as tiebreak.
+**Scoring:** decisions used against par, with time remaining at the exit as
+tiebreak.
 
 ### Authoring interface
 
-Difficulty and tedium are separable, so there are two modes:
-
 - **Route drawing** (primary) — trace the path on the maze; the game derives
-  the RLE and shows instruction count against par live. Keeps the real
-  difficulty (finding a cheap route), removes transcription error.
-- **Raw tape text** (expert) — type the instructions. Restores the
-  off-by-one death, for those who want it.
+  the decision list and shows the count against par live.
+- **Raw tape text** (expert) — type the decision sequence directly.
 
 Route drawing must include a **stall overlay**: where along the route the
 beam will hold you, and for how long. Without it the time budget is opaque
@@ -432,36 +518,57 @@ guesswork rather than reasoning.
 
 ## 9. Feasibility analysis
 
-The project's actual payload. Three walls, and the CRT is responsible for
-only one.
+The project's actual payload.
 
-| Wall | Requirement | Human capacity | Gap |
-|---|---|---|---|
-| **Perception / reaction** | react inside 16.6833 ms | simple visual RT 200-250 ms; 4-choice RT 300-400 ms; route-planning a maze: seconds | **0 reactive inputs possible** |
-| **Input rate** | ~500-3,000 direction changes per frame = 30-180 kHz | ~20 Hz elite sustained → **0.33 keypresses per frame** | 1,500-9,000x |
-| **Turn precision** | 164.4 ns window (one step period) | 1 kHz keyboard = 1 ms; 8 kHz = 125 us | 760-6,083x |
+Two of the three barriers an earlier draft relied on have been **deliberately
+removed**, so that exactly one thing stands between a player and a win.
 
-Three independent impossibilities, each sufficient on its own.
+| Barrier | Status | Why |
+|---|---|---|
+| **Turn precision** | *removed* | Buffered junction input (§5). No timestamp has to be hit. |
+| **Route complexity** | *removed* | Generation is capped at the decision budget (§4). The route is always expressible. |
+| **Decision rate** | **the wall** | 133 decisions in 16.6833 ms = ~7,980 per second. |
+
+That leaves a single, clean statement of the problem:
+
+> ONE FRAME requires ~7,980 correct branch decisions per second.
+> An 8 kHz USB keyboard supplies 8,000 polls per second.
+> A human supplies about 20 — and far fewer when each is a choice.
 
 ### The machine boundary
 
-The real line is not the display — it is whether input passes through USB HID.
+The line is not the display, and it is no longer custom silicon. It is
+whether a *machine* is driving the keys.
 
-| Player | Timestamp resolution | ONE FRAME |
+| Player | Decisions/second | ONE FRAME |
 |---|---|---|
-| Human | ~250 ms | no |
-| 1 kHz keyboard | 1 ms | no |
-| 8 kHz keyboard | 125 us | no |
-| FPGA / MCU direct | <100 ns | **yes** |
+| Human, raw keypress ceiling | ~20 | no |
+| Human, choice reactions | ~3-4 | no |
+| USB 1.1 legacy (125 Hz) | 125 | no |
+| USB 2.0 full-speed (1 kHz) | 1,000 | no |
+| **USB 2.0 high-speed (8 kHz), machine-driven** | **8,000** | **yes** |
 
-USB HID caps out at 8 kHz and loses. Silicon at >=6 MHz wins. This is what
-"theoretically possible, just not for a human" means precisely.
+The gap is **~400x on raw keypress rate and ~2,000x on decisions.** No FPGA,
+no custom timing hardware, no direct API access — a commodity 8 kHz keyboard
+and something other than hands.
+
+This is what "theoretically possible, just not for a human" means precisely,
+and calibrating the level to the hardware ceiling rather than past it makes
+the claim tight instead of merely large.
+
+### Why the top rung is no longer over-determined
+
+Piling up independent impossibilities makes a level *unwinnable*, which is a
+weaker and less interesting claim than *exactly at the limit*. Removing the
+precision and complexity walls costs nothing — no human was ever going to
+clear the decision-rate wall — and it buys a level whose difficulty is a
+measured hardware property rather than a designer's assertion.
 
 ### The merciful case
 
 No minimum path length is enforced, so with vanishing probability the spawn
-gap sits adjacent to the exit gap with zero turns between them, and simply
-holding the initial direction wins.
+gap sits adjacent to the exit gap with zero junctions between them, and
+simply holding the initial direction wins.
 
 **The only human-winnable ONE FRAME instances are the degenerate ones.** That
 mercy stays in the distribution.
@@ -486,12 +593,13 @@ mercy stays in the distribution.
 - **Rules** — the mechanics, the rate table, and the §9 numbers. The rules
   screen *is* the thesis statement.
 - **Study** — full maze, pan/zoom, route tools (MEDIUM and Compile only)
-- **Compile** — tape editor, count vs. par, stall overlay, time projection
+- **Compile** — decision-list editor, count vs. par and vs. `DECISION_BUDGET`,
+  stall overlay, time projection
 - **Run** — 320 x 240, 1:1 pixels, phosphor persistence, optional
   scanline/bloom/barrel treatment
 - **Verdict** — YOU WIN / YOU LOSE, 8x8 bitmap font, on the following frame
 - **Autopsy** — dilated replay with scrubber; death timestamp in us, beam
-  position at death, instruction index that killed you, stall accounting,
+  position at death, the decision index that killed you, stall accounting,
   % of route completed, and the instance's Map/Clock split
 
 ---
@@ -521,8 +629,10 @@ Optional localStorage for seeds and tapes.
 
 1. **Sim core** — maze generation, beam model, kinematics, collision,
    causality/stall semantics, verdict. Headless, seeded, unit-tested.
-2. **Solver + analyzer** — Pareto frontier over (turns, beam-adjusted time);
-   emits winning tapes; batch-runs N seeds for route statistics.
+2. **Solver + analyzer** — Pareto frontier over (decisions, beam-adjusted
+   time); emits winning tapes; batch-runs N seeds for route statistics.
+   Also supplies the decision-budget-constrained path used by generation
+   (§4), so it is entangled with Phase 1 rather than strictly after it.
 3. **Renderer** — canvas, phosphor persistence, beam reveal, CRT treatment.
 4. **Shell** — title, rules, study, verdict, autopsy, dilation, seed entry.
 5. **Compile UI** — tape editor, route drawing, stall overlay. The largest
@@ -532,11 +642,13 @@ Optional localStorage for seeds and tapes.
 ### Phase 2 is a hard dependency, not a nice-to-have
 
 MEDIUM's deadline **cannot be computed** without per-seed route statistics:
-optimal path length, turn count, and bend/junction split. Compile Mode's par
-needs the same solver.
+optimal path length and junction count. Compile Mode's par needs the same
+solver.
 
-**EASY and ONE FRAME can ship without Phase 2. MEDIUM and Compile Mode
-cannot.**
+The decision-budget constraint (§4) tightened this further: **maze generation
+itself now needs a decision-counting router**, so no difficulty ships without
+at least that much of Phase 2. Full Pareto analysis is still only required
+for MEDIUM and Compile Mode.
 
 ---
 
@@ -547,19 +659,24 @@ constant.
 
 | Parameter | Working value | Needs |
 |---|---|---|
-| Route length (DFS, 159x119) | 2,000-16,000 steps | Phase 2 measurement |
-| Turn count | 500-3,000 | Phase 2 measurement |
-| Bend / junction split | 70 / 30 | Phase 2 measurement |
-| Mean straight run | ~5 px | Phase 2 measurement |
-| Forced-bend reaction cost | 150 ms | calibration against real play |
+| `DECISION_BUDGET` | 133 (8 kHz USB) | fixed by hardware, not tunable |
+| Route length under the budget | ~4,000 px | Phase 2 measurement |
+| Junctions on the optimal route | <= 133 by construction | Phase 2 measurement |
+| Mean run between junctions | ~30 px | Phase 2 measurement |
 | Junction reaction cost | 350 ms | calibration against real play |
 | MEDIUM slack `k` | 1.15 (1.0 scored) | playtest |
 | Compile par slack | 5-10% | playtest |
 | Infeasible-seed policy | reject at generation | open |
-| Explicit `HOLD` instruction | omitted from canonical | open |
 
-The reaction constants are literature values, not measurements. They ship as
-config, not constants, and the defaults are provisional.
+`DECISION_BUDGET` is the one genuinely fixed number here — it is a property
+of USB HID, not a design choice. Everything else is provisional. The reaction
+constant is a literature value, not a measurement, and ships as config.
+
+**Whether 133 is the right canonical ceiling is a judgement call**, not a
+measurement: 8 kHz is the fastest keyboard that exists, but 1 kHz (16
+decisions) is what nearly everyone actually owns. Dropping to 1 kHz would
+make the maze solution drastically simpler and the level correspondingly
+less interesting, which is why the ceiling was chosen. Worth revisiting.
 
 ---
 
@@ -581,5 +698,9 @@ Cell lattice          159 x 119       = 18,921 cells
 Corridor pixels       37,841          (~49% of field)
 Step budget @ 1x      101,479 steps
 Steps per beam row    ~423
-HARD dilation         6,083x
+
+DECISION_BUDGET       133             (8 kHz USB HID over one frame)
+Required input rate   ~7,980 /s
+8 kHz USB supplies    8,000 /s
+Human ceiling         ~20 /s raw, ~3-4 /s for choices
 ```
