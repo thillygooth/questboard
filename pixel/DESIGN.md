@@ -3,7 +3,8 @@
 > A maze game in which you are one white pixel, the maze is one pixel wide, and
 > the only way out is the single missing pixel in the wall that surrounds the world.
 
-**Status:** design only. No code written yet.
+**Status:** generator and solver built and verified; game loop, renderer and
+input not yet written. See §15 for what exists.
 **Scope:** standalone project. No dependency on Questboard; lives in `pixel/` for now.
 
 ---
@@ -84,12 +85,15 @@ generation.
                                      └ exit: one missing pixel in the ring
 ```
 
-- **Border ring** — `x = 0`, `x = 1919`, `y = 0`, `y = 1079`. Solid wall. Never carved,
-  except for the exit and any decoy gaps.
+- **Border ring** — `x = 0`, `x = 1918`, `y = 0`, `y = 1078`. Solid wall. Never carved,
+  except for the exit and any decoy gaps. Column 1919 and row 1079 are painted wall as
+  well and are simply extra thickness: 1920 and 1080 are even, so a ring at 1919 would
+  sit one wall pixel away from the last corridor and the exit would be two pixels deep.
+  See the parity note at the top of `src/field.js`.
 - **Exit** — one border pixel set to corridor, adjacent to a reachable corridor cell.
-  Entering that pixel wins immediately.
+  Entering that pixel wins immediately; nothing beyond it ever matters.
 - **Spawn** — a random corridor cell adjacent to the border ring, i.e. on the periphery,
-  as far from the exit as the mode's solution band requires.
+  on a *different edge* from the exit and at least 900px away from it (§4.3).
 - **HUD reserve** — bottom-right 240 × 140 block, held as solid wall at generation time
   so that the Hard-mode control display never covers playable space.
 
@@ -133,30 +137,48 @@ still 1px, corridors are still 1px, the field is still full.
 
 ### 4.3 Algorithm
 
+The order matters, and the obvious order is wrong. Growing the player's region first
+and then looking inside it for two periphery points produces a compact blob that only
+touches **one edge**: spawn, exit and every decoy end up on the same side of the field a
+couple of hundred pixels apart. The path between them is still thousands of moves long,
+but the entire run happens in one small patch of a 1920 × 1080 screen, and "spawns
+randomly on the periphery, same with the exit" stops being true in any meaningful sense.
+
+So the two periphery points are chosen **first**, and the region is grown to connect them:
+
 ```
 1.  grid ← Uint8Array(1920 × 1080), all WALL
-2.  Mark the border ring as BORDER (never carved)
-3.  Mark the bottom-right 240 × 140 HUD reserve as RESERVED (never carved)
-4.  Lattice = cells at odd (x, y) outside the reserved areas          → 959 × 539
-5.  Choose R ∈ [12, 20] seed points; grow regions by randomised
-    multi-source flood fill (random frontier pop, not FIFO) so region
-    boundaries are irregular and unguessable
-6.  For each region independently: iterative recursive backtracker,
+2.  Mark the border ring and the 240 × 140 HUD reserve as never-carved
+3.  Lattice = cells at odd (x, y) outside those areas                 → 959 × 539
+4.  Pick SPAWN and EXIT: random lattice cells on two *different* edges,
+    at least 900px apart (Manhattan)
+5.  SPINE ← drunken walk from SPAWN to EXIT: ~68% biased toward the
+    target, ~32% random. Typically ~1,160 lattice cells.
+6.  Player region ← claim every spine cell, then thicken outward by
+    randomised-frontier growth until it reaches mode.regionCells
+7.  Remaining lattice → 12–20 decorative regions by randomised
+    multi-source flood fill; sweep stragglers so nothing is left over
+8.  For each region independently: iterative recursive backtracker,
     restricted to that region. Never carve across a region boundary.
-7.  Player region ← a region containing ≥ 2 border-adjacent lattice cells
-8.  Spawn ← random border-adjacent lattice cell in that region
-9.  BFS from spawn within the region → distance field d[]
-10. Exit candidates ← border-adjacent cells in the region with
-    d[cell] inside the mode's solution band (§7)
-    → if empty, resample the region or re-partition (rare)
-11. Carve the single border pixel adjacent to the chosen cell → EXIT
-12. Place decoy gaps per mode (§8)
-13. Validate (§4.4), then freeze
+9.  BFS from SPAWN → distance field d[]. Reject the field if
+    d[EXIT] + 1 falls outside the mode's solution band (§7).
+10. Carve the single ring pixel adjacent to EXIT → the exit gap
+11. Place decoy gaps per mode (§8.2)
+12. Validate (§4.4), then freeze
 ```
 
-Use the **randomised-frontier** flood fill in step 5, not a plain BFS — FIFO growth
-produces suspiciously circular regions, and a player who learns to recognise region
-shapes has beaten the central mechanic.
+Two details that are load-bearing:
+
+**Spine cells are claimed unconditionally in step 6**, not popped at random off the
+frontier like everything else. Losing part of the spine would disconnect the spawn from
+the exit and quietly produce an unwinnable field.
+
+**Growth uses a randomised frontier**, not FIFO. FIFO growth produces suspiciously
+circular regions, and a player who learns to recognise region shapes by eye has beaten
+the central mechanic.
+
+Because the spine is connected and each region is spanned by a single tree, the exit is
+reachable by construction — solution length is the only thing step 9 needs to filter.
 
 Recursive backtracker is the right generator here, not Prim's or Wilson's: it produces
 long winding corridors and few short stubs, which is what makes auto-run lethal and
@@ -404,12 +426,14 @@ bug reports, and the §4.4 solver.
 ## 13. Decisions taken, with reasons
 
 **No-reversal in Hard was rejected.** It is the most obviously brutal modifier available
-and it does not survive arithmetic. With ~1 junction per 4 cells and a 4,000-cell
-solution, a Hard run presents ~1,000 junctions. Without reversal, every one must be
-guessed correctly on first contact — survival probability on the order of 2⁻¹⁰⁰⁰. That
-is not a hard game, it is a game with no win state, and the leaderboard would never
-populate. It is available as an unranked **IMPOSSIBLE** modifier for people who want to
-see it.
+and it does not survive arithmetic. Measured on generated fields, junctions fall roughly
+one per 21–31 pixels of solution, so a Hard run presents **400–700 junctions** (not the
+~1,000 first estimated from a guessed junction density — the real figure is lower because
+recursive-backtracker mazes run long and straight). It changes nothing: without reversal
+every junction must be guessed correctly on first contact, and 2⁻⁴⁰⁰ is not meaningfully
+better than 2⁻¹⁰⁰⁰. That is not a hard game, it is a game with no win state, and the
+leaderboard would never populate. It is available as an unranked **IMPOSSIBLE** modifier
+for people who want to see it.
 
 **Full-field connected mazes were rejected as the default** for the reason in §4.1, and
 kept as an unranked **FULL BLEED** modifier: one region, the entire field, a ~65,000-cell
@@ -425,22 +449,52 @@ that is not interesting to argue about.
 
 ## 14. Tuning constants
 
+Values marked ✓ are the ones the generator currently runs and `tools/verify.js`
+confirms. The active field is 1919 × 1079 inside the 1920 × 1080 canvas — see the parity
+note at the top of `src/field.js` for why, and why the wall reads 2px thick on two edges.
+
 | Constant | Value | Notes |
 |---|---|---|
 | `FIELD_W`, `FIELD_H` | 1920, 1080 | must be device pixels |
-| `LATTICE_W`, `LATTICE_H` | 959, 539 | odd coordinates only |
-| `REGION_COUNT` | 12–20 | seeded random |
-| `HUD_RESERVE` | 240 × 140 | bottom-right, solid wall |
+| `ACTIVE_W`, `ACTIVE_H` | 1919, 1079 ✓ | border ring at 0 and 1918 / 1078 |
+| `LAT_W`, `LAT_H` | 959, 539 ✓ | 516,901 cells, odd coordinates only |
+| `HUD_RESERVE` | 240 × 140 ✓ | bottom-right, solid wall |
+| `REGION_COUNT` | 12–20 ✓ | decorative regions, seeded random |
+| `MIN_END_SEPARATION` | 900 px ✓ | spawn to exit, Manhattan, different edges |
+| `SPINE_DRIFT` | 0.32 ✓ | share of spine steps that ignore the target |
 | `BLINK_ON` / `BLINK_OFF` | 400 ms / 200 ms | all modes |
-| `SPEED_BASE` | 18–25 cells/s | per mode |
-| `SPEED_RAMP` | +1 cell/s per 20 s | Medium and Hard |
+| `regionCells` | 6,000 / 14,000 / 20,000 ✓ | Easy / Medium / Hard |
+| `solutionBand` | 4,000–6,400 / 7,000–12,200 / 9,800–15,500 ✓ | pixel-moves |
+| `stepRate` | 40 / 45 / 60 px/s ✓ | Easy / Medium / Hard |
+| `speedRamp` | +2 px/s per 20 s | Medium and Hard |
+| `decoyCount` | 0 / 2 / 3 ✓ | Easy / Medium / Hard |
+| `MIN_SPAWN_PIXELS` | 320 ✓ | decoy to spawn, Manhattan |
+| `minSpawnMoves` | 15% of solution ✓ | lethal decoys only, along the maze |
 | `FOG_RADIUS` | 70 px | Hard |
 | `COLLAPSE_PERIOD` | 8 s | Hard |
 | `COLLAPSE_RADIUS` | 300 px | Hard; ∞ in Collapse variant |
 | `REMAP_INTERVAL` | 15–35 s | Hard, seeded random |
 | `REMAP_COOLDOWN` | 3 s | minimum between reassignments |
-| `DECOY_COUNT` | 0 / 1–2 / 2–3 | Easy / Medium / Hard |
 | `SONAR_HZ` | 200 → 1200 | far → near |
+
+### What the generator actually produces
+
+Measured over three daily seeds per mode (`node tools/verify.js`):
+
+| | Easy | Medium | Hard |
+|---|---|---|---|
+| Solution | 4,411–5,491 moves | 8,207–10,125 | 11,099–15,027 |
+| Par | 110–137 s | 182–225 s | 185–250 s |
+| Junctions | 226–413 | 349–477 | 402–703 |
+| Decisions/sec at par | 2.0–3.0 | 1.8–2.1 | 2.2–2.8 |
+| Reachable world | 12,000 px | 28,000 px | 40,003 px |
+| Share of visible maze | **1.2%** | **2.8%** | **3.9%** |
+| Generation | ~400 ms, 1 attempt | ~390 ms, 1 attempt | ~400 ms, 1 attempt |
+
+The last two rows are the design working as intended and are worth stating plainly: on
+Hard the player can see about a million corridor pixels and can reach 40,003 of them.
+Over 96% of the maze on screen is scenery, and nothing distinguishes it from the part
+that matters.
 
 ---
 
@@ -453,16 +507,26 @@ pixel/
   index.html
   style.css
   src/
-    rng.js          mulberry32, string → seed
-    maze.js         region partition, recursive backtracker, border carving
+    rng.js          mulberry32, string → seed              ✓ built
+    field.js        geometry, parity, HUD reserve          ✓ built
+    maze.js         spine, region partition, carving       ✓ built
+    solver.js       BFS, par time, seed validation         ✓ built
+    modes.js        the three rule sets, as data           ✓ built
     collapse.js     dead-end filling
-    solver.js       BFS distance field, par time, seed validation
-    modes.js        the three rule sets, as data
     game.js         fixed-timestep loop, state machine
     render.js       framebuffer, dirty rects, fog, HUD
     input.js        keymap, buffering policy, reassignment schedule
     audio.js        sonar
     board.js        leaderboards, replay encoding
+  tools/
+    verify.js       generation harness + invariant checks  ✓ built
+    preview.js      PNG dumps of generated fields          ✓ built
+    png.js          minimal indexed-colour PNG encoder     ✓ built
+```
+
+```bash
+npm run verify     # generate across all modes, assert §4.4 invariants
+npm run preview    # node tools/preview.js [mode] [isoDate] → tools/out/*.png
 ```
 
 ---

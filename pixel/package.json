@@ -1,0 +1,11 @@
+{
+  "name": "pixel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A maze game in which you are one white pixel.",
+  "scripts": {
+    "verify": "node tools/verify.js",
+    "preview": "node tools/preview.js"
+  }
+}
