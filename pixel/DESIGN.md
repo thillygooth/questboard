@@ -1,7 +1,7 @@
 # PIXEL — Design Document
 
-> A maze game in which you are one white pixel, the maze is one pixel wide, and
-> the only way out is the single missing pixel in the wall that surrounds the world.
+> A maze game in which you are one black pixel, the maze is one pixel wide, and
+> the only way out is the single white opening in the wall that surrounds the world.
 
 **Status:** playable end to end. Generator, solver, collapse, renderer, simulation,
 input, leaderboard and sonar are built and verified. See §15.
@@ -14,9 +14,10 @@ input, leaderboard and sonar are built and verified. See §15.
 The field is 1920 × 1080 pixels. Every pixel is one of three things: wall, corridor, or
 you. Walls are one pixel wide. Corridors are one pixel wide. You are one pixel.
 
-A solid unbroken wall surrounds the entire field. Exactly one pixel of that wall is
-missing. That gap is the exit. Reaching it wins. Moving into any wall, or out of the
-field anywhere else, kills you instantly and permanently — you get one life.
+Walls are black and corridors are white. A solid unbroken black wall surrounds the
+entire field, and exactly one pixel of it is open. That white opening is the exit.
+Reaching it wins. Moving into any wall, or out of the field anywhere else, kills you
+instantly and permanently — you get one life.
 
 Two consequences of that spec do most of the design work, and both are free:
 
@@ -24,11 +25,18 @@ Two consequences of that spec do most of the design work, and both are free:
 kills you everywhere except one pixel, where instead it wins. The exit is not a door
 you unlock. It is the one place where the thing that always kills you doesn't.
 
-**You look exactly like a wall.** A white pixel sitting in a black corridor reads as a
+**You look exactly like a wall.** A black pixel sitting in a white corridor reads as a
 wall segment. You are camouflaged as an obstacle, and you misread the maze most badly
 in the immediate neighbourhood of yourself. This is why the player pixel blinks — the
 blink is the only thing that distinguishes you from the world, and it makes you a
 twinkle that alternates between "wall here" and "gap here."
+
+Those two facts are locked together, and the pairing is forced rather than chosen. The
+blink is only visible if the player differs from the corridor it stands in, so the
+player and the corridors must be opposite colours — which makes the player necessarily
+the same colour as the walls. A white player on white corridors renders identically in
+both blink phases and can never be found at all; it was tried, and that is exactly what
+happens. Given walls are black so the surrounding wall is black, the player is black.
 
 ---
 
@@ -38,10 +46,10 @@ twinkle that alternates between "wall here" and "gap here."
 |---|---|
 | Field | 1920 × 1080, exactly 1 maze cell per device pixel |
 | Corridor lattice | odd coordinates only → 959 × 539 = **516,901** potential corridor cells |
-| Wall | `#ffffff` |
-| Corridor | `#000000` |
-| Player | `#ffffff`, blinking (see §6) |
-| Exit | a single `#000000` pixel in the border ring |
+| Wall | `#000000` |
+| Corridor | `#ffffff` (`#c8c8c8` on Hard, lowering contrast) |
+| Player | `#000000`, blinking (see §6) — exactly the wall colour |
+| Exit | a single `#ffffff` opening in the black border ring |
 
 ### Rendering
 
@@ -91,7 +99,9 @@ generation.
   sit one wall pixel away from the last corridor and the exit would be two pixels deep.
   See the parity note at the top of `src/field.js`.
 - **Exit** — one border pixel set to corridor, adjacent to a reachable corridor cell.
-  Entering that pixel wins immediately; nothing beyond it ever matters.
+  It renders white because it *is* a corridor pixel: colour means passability
+  everywhere, with no exceptions, and the exit is the one place in the ring you can
+  move into. Entering it wins immediately; nothing beyond it ever matters.
 - **Spawn** — a random corridor cell adjacent to the border ring, i.e. on the periphery,
   on a *different edge* from the exit and at least 900px away from it (§4.3).
 - **HUD reserve** — bottom-right 240 × 140 block, held as solid wall at generation time
@@ -224,7 +234,7 @@ to forbid it in Hard, and it was considered and rejected — see §13.
 
 The player blinks in every mode: **400 ms on, 200 ms off.**
 
-While on, you are `#ffffff` and read as a wall. While off, you are `#000000` and read as
+While on, you are `#000000` and read as a wall. While off, you are `#ffffff` and read as
 open corridor. The pixel therefore flickers between "blocked" and "clear," which is both
 how you locate yourself in a field of half a million pixels and why the maze immediately
 around you is the part you read worst.
@@ -263,7 +273,7 @@ death.
 **Easy — brutal but fair.** Nothing surprises you and nothing moves without your input.
 The whole field is visible. It is hard for exactly two reasons: 1px corridors punish
 imprecise reading, and the visible map is mostly unreachable regions you cannot identify.
-Finding the exit means scanning ~6,000 border pixels for the single black one.
+Finding the exit means scanning ~6,000 border pixels for the single white one.
 
 **Medium — fair core, cruel garnish.** You can no longer stop. Speed ramps. The false
 gaps waste your time but cannot kill you — they belong to regions you can never reach,
@@ -309,7 +319,7 @@ which §4.4 exists to prevent.
 
 ### 8.2 Decoy gaps
 
-Two or three additional black pixels are carved into the border ring, adjacent to
+Two or three additional white openings are carved into the border ring, adjacent to
 corridor cells **inside the player's own region** — so they are genuinely reachable.
 
 Entering a decoy displays `YOU WIN` for 600 ms, then `YOU LOSE`. The run is over.
@@ -353,8 +363,9 @@ the exit — the maze would solve itself for anyone who survived long enough. Th
 beautiful arc and probably too generous; it is reserved for a separate "Collapse"
 variant where it is the point rather than a side effect.
 
-Rendering: collapsed cells flip from black to white. At 1px, a collapse round reads as
-the maze visibly *breathing inward*, which is the best-looking thing in the game.
+Rendering: collapsed cells flip from white to black. At 1px, a collapse round reads as
+the maze visibly *breathing inward* and darkening, which is the best-looking thing in
+the game.
 
 Two things the implementation makes non-negotiable:
 

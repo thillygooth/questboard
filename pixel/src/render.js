@@ -14,15 +14,28 @@ import { FIELD_W, FIELD_H, CORRIDOR, HUD_X0, HUD_Y0, HUD_W, HUD_H } from './fiel
 // ImageData is RGBA little-endian, so a packed pixel is 0xAABBGGRR.
 const rgb = (r, g, b) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
 const BLACK = rgb(0, 0, 0);
+const WHITE = rgb(255, 255, 255);
+const DIM = rgb(200, 200, 200);
 
 /**
- * Hard mode dims the walls to #c8c8c8. The player is always exactly the wall
- * colour — that is the point of §1: you are camouflaged as an obstacle.
+ * Walls are black and corridors are white, so the wall surrounding the field is
+ * black and the exit is the single white opening in it.
+ *
+ * The player is always exactly the wall colour — that is the point of §1: you
+ * are camouflaged as an obstacle. Which means the player is black, and the
+ * blink shows you as a momentary wall in an open corridor.
+ *
+ * This pairing is forced, not chosen. The blink is only visible if the player
+ * differs from the corridor it stands in, so player and corridor must be
+ * opposite colours; making the player white here would render it white-on-white
+ * in both blink phases and it could never be found at all.
+ *
+ * Hard dims the corridors to #c8c8c8, lowering contrast across the whole field.
  */
 export const PALETTES = {
-  easy: { wall: rgb(255, 255, 255), corridor: BLACK, exit: rgb(34, 255, 34), markExit: true },
-  medium: { wall: rgb(255, 255, 255), corridor: BLACK, exit: BLACK, markExit: false },
-  hard: { wall: rgb(200, 200, 200), corridor: BLACK, exit: BLACK, markExit: false },
+  easy: { wall: BLACK, corridor: WHITE, exit: rgb(34, 255, 34), markExit: true },
+  medium: { wall: BLACK, corridor: WHITE, exit: WHITE, markExit: false },
+  hard: { wall: BLACK, corridor: DIM, exit: DIM, markExit: false },
 };
 
 export const BLINK_ON_MS = 400;

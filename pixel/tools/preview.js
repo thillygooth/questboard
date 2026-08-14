@@ -3,7 +3,8 @@
 //   node tools/preview.js [mode] [isoDate]
 //
 // Writes three files into tools/out/:
-//   *-true.png       exactly what the player sees: 1920x1080, pure black & white
+//   *-true.png       exactly what the player sees: 1920x1080, black walls,
+//                    white corridors, and one white opening in the ring
 //   *-annotated.png  reachable region tinted, solution path drawn, markers on
 //   *-zoom.png       8x crop around the spawn, so 1px structure is visible
 
@@ -29,9 +30,9 @@ mkdirSync(outDir, { recursive: true });
 const field = generateField(seed, mode);
 const { grid, spawnIdx, exitIdx, decoyIdx } = field;
 
-// ── True render: wall white, corridor black, and nothing else. ───────────────
+// ── True render: wall black, corridor white, and nothing else. ──────────────
 const truth = new Uint8Array(FIELD_W * FIELD_H);
-for (let i = 0; i < grid.length; i++) truth[i] = grid[i] === CORRIDOR ? 0 : 1;
+for (let i = 0; i < grid.length; i++) truth[i] = grid[i] === CORRIDOR ? 1 : 0;
 
 // ── Annotated render ────────────────────────────────────────────────────────
 const dist = bfsFrom(grid, spawnIdx);

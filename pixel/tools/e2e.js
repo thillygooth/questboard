@@ -1,13 +1,34 @@
 // Browser smoke test: does the whole thing actually run?
 //
-//   python3 -m http.server 8123   (from pixel/)
 //   node tools/e2e.js
+//
+// Serves pixel/ itself, so there is no external server to forget to start.
 //
 // Drives a real Chromium through menu -> rules -> a run -> death -> leaderboard,
 // and fails on any page error. The unit-level tools prove the maze, the collapse
 // and the renderer; this proves they are wired together.
 
 import { chromium } from 'playwright';
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { dirname, extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
+
+const server = createServer(async (req, res) => {
+  const rel = normalize(decodeURI(req.url.split('?')[0])).replace(/^(\.\.[/\\])+/, '');
+  const file = join(ROOT, rel === '/' ? 'index.html' : rel);
+  try {
+    const body = await readFile(file);
+    res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
+    res.end(body);
+  } catch {
+    res.writeHead(404).end('not found');
+  }
+});
+await new Promise((r) => server.listen(8123, r));
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
@@ -84,4 +105,5 @@ console.log('hard mode started; HUD reserve has', hudPixels, 'lit pixels (contro
 
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');
 await browser.close();
+server.close();
 process.exit(errors.length ? 1 : 0);
