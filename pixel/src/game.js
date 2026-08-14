@@ -46,7 +46,7 @@ export class Game {
     this.heading = null;
     this.heading = this.initialHeading();
     this.pending = null;        // { dir, movesLeft }
-    this.held = null;           // Easy only
+    this.held = null;           // Unpleasant only
     this.controls = new Controls(mode, mulberry32((seed ^ 0x5bf03635) >>> 0));
 
     this.ticks = 0;
@@ -58,7 +58,7 @@ export class Game {
     this.collapsed = [];        // pixels filled this tick, for the renderer
 
     // Distance to the exit, for sonar and for the closest-approach stat that is
-    // the only number most Hard runs will ever produce.
+    // the only number most Excruciating runs will ever produce.
     this.distToExit = bfsFrom(this.grid, this.exitIdx);
     this.startDistance = this.distToExit[this.idx];
     this.closest = this.startDistance;
@@ -117,7 +117,7 @@ export class Game {
     if (dir && this.held === dir) this.held = null;
   }
 
-  /** Window blur. Ends the run outright in Medium and Hard (§7). */
+  /** Window blur. Ends the run outright in Miserable and Excruciating (§7). */
   blur() {
     if (this.state === STATE.PLAYING && this.mode.blurEndsRun) this.die(CAUSE.BLUR);
   }
@@ -139,7 +139,7 @@ export class Game {
     this.runCollapse();
     if (this.finished) return;
 
-    // Easy only moves while a key is held; the others never stop.
+    // Unpleasant only moves while a key is held; the others never stop.
     if (this.mode.movement === 'step' && !this.held) {
       this.accumulator = 0;
       return;
@@ -243,7 +243,7 @@ export class Game {
    *
    * Without this an auto-run mode kills the player on move zero: with no heading
    * and a spawn that has two ways on, chooseRunDirection sees a junction it has
-   * no answer for and calls it a wall. On Hard, whose countdown is a single
+   * no answer for and calls it a wall. On Excruciating, whose countdown is a single
    * frame, that is a death in 0.02s that no skill could have avoided.
    */
   initialHeading() {

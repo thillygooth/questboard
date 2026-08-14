@@ -46,8 +46,8 @@ await page.waitForSelector('#rules:not(.hidden)');
 console.log('rules screen ok');
 await page.click('#rules-back');
 
-// Start EASY free play
-await page.click('button[data-mode="easy"][data-ranked="0"]');
+// Start UNPLEASANT free play
+await page.click('button[data-mode="unpleasant"][data-ranked="0"]');
 await page.waitForSelector('#hud:not(.hidden)', { timeout: 20000 });
 console.log('run started, overlay dismissed');
 
@@ -88,9 +88,9 @@ await page.screenshot({ path: 'tools/out/e2e-board.png' });
 
 await page.click('#board-back');
 
-// Hard mode: fog and the control HUD are the two things only a real browser can
+// Excruciating: fog and the control HUD are the two things only a real browser can
 // confirm, since drawHud is the one part that touches a 2D context.
-await page.click('button[data-mode="hard"][data-ranked="0"]');
+await page.click('button[data-mode="excruciating"][data-ranked="0"]');
 await page.waitForSelector('#hud:not(.hidden)', { timeout: 20000 });
 await page.waitForTimeout(150);
 await page.screenshot({ path: 'tools/out/e2e-hard-fog.png' });
@@ -101,7 +101,7 @@ const hudPixels = await page.evaluate(() => {
   for (let i = 0; i < d.length; i += 4) if (d[i] > 40) lit++;
   return lit;
 });
-console.log('hard mode started; HUD reserve has', hudPixels, 'lit pixels (control display drawn)');
+console.log('excruciating started; HUD reserve has', hudPixels, 'lit pixels (control display drawn)');
 
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');
 await browser.close();

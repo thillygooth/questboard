@@ -71,7 +71,7 @@ export function reachableCount(distField) {
 /**
  * Junctions on the solution path: corridor pixels with three or more corridor
  * neighbours. This is the count of real decisions a run demands, and it is the
- * number that killed the no-reversal variant of Hard mode (DESIGN.md §13).
+ * number that killed the no-reversal variant of Excruciating mode (DESIGN.md §13).
  */
 export function countJunctions(grid, path) {
   let junctions = 0;
@@ -107,7 +107,7 @@ export function validate(field) {
     }
   }
 
-  // Hard's decoys must be reachable or they can never lie to anyone. Medium's
+  // Excruciating's decoys must be reachable or they can never lie to anyone. Miserable's
   // must NOT be, because there they are only meant to cost time.
   for (const d of decoyIdx) {
     const reachable = dist[d] !== UNREACHABLE;

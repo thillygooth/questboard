@@ -1,12 +1,12 @@
-// Input handling and the Hard-mode control reassignment. See DESIGN.md §7 and §8.1.
+// Input handling and the Excruciating control reassignment. See DESIGN.md §7 and §8.1.
 //
 // Three policies, one per mode:
 //
-//   free    Easy. A held key steps the pixel. Pressing into a wall is death,
+//   free    Unpleasant. A held key steps the pixel. Pressing into a wall is death,
 //           because moving into a wall is death — but you can always just stop.
-//   buffer1 Medium. A pressed direction survives one move looking for a chance
+//   buffer1 Miserable. A pressed direction survives one move looking for a chance
 //           to be applied, then is dropped. Never fatal by itself.
-//   strict  Hard. A direction pressed into a wall kills you on the spot. The
+//   strict  Excruciating. A direction pressed into a wall kills you on the spot. The
 //           turn lands on the exact move or not at all.
 
 export const DIRS = ['up', 'down', 'left', 'right'];

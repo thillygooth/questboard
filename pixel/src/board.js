@@ -5,7 +5,7 @@
 // attempt per mode per day, and when you die that mode is gone until tomorrow.
 //
 // Free Play uses random seeds, is unranked and unlimited. It is what makes
-// one-life-per-day tolerable rather than merely punishing — and on Hard it is
+// one-life-per-day tolerable rather than merely punishing — and on Excruciating it is
 // almost certainly how anyone who ever finishes will have prepared.
 
 const KEY = 'pixel.runs.v1';
@@ -41,7 +41,7 @@ export function recordRun(run) {
 }
 
 /**
- * Both boards for a mode on a date. The progress board exists because on Hard
+ * Both boards for a mode on a date. The progress board exists because on Excruciating
  * the escape board will frequently be empty, and a list of people who nearly
  * made it is still a leaderboard.
  */

@@ -9,7 +9,10 @@
 // Any fractional scaling turns 1px lines into grey mush and the player pixel
 // stops being findable at all.
 
-import { FIELD_W, FIELD_H, CORRIDOR, HUD_X0, HUD_Y0, HUD_W, HUD_H } from './field.js';
+import {
+  FIELD_W, FIELD_H, CORRIDOR, HUD_X0, HUD_Y0, HUD_W, HUD_H,
+  RING_MIN_X, RING_MAX_X, RING_MIN_Y, RING_MAX_Y,
+} from './field.js';
 
 // ImageData is RGBA little-endian, so a packed pixel is 0xAABBGGRR.
 const rgb = (r, g, b) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
@@ -30,12 +33,12 @@ const DIM = rgb(200, 200, 200);
  * opposite colours; making the player white here would render it white-on-white
  * in both blink phases and it could never be found at all.
  *
- * Hard dims the corridors to #c8c8c8, lowering contrast across the whole field.
+ * Excruciating dims the corridors to #c8c8c8, lowering contrast across the whole field.
  */
 export const PALETTES = {
-  easy: { wall: BLACK, corridor: WHITE, exit: rgb(34, 255, 34), markExit: true, playerOn: BLACK, playerOff: WHITE },
-  medium: { wall: BLACK, corridor: WHITE, exit: WHITE, markExit: false, playerOn: BLACK, playerOff: WHITE },
-  hard: { wall: BLACK, corridor: DIM, exit: DIM, markExit: false, playerOn: BLACK, playerOff: WHITE },
+  unpleasant: { wall: BLACK, corridor: WHITE, exit: rgb(34, 255, 34), markExit: true, playerOn: BLACK, playerOff: WHITE },
+  miserable: { wall: BLACK, corridor: WHITE, exit: WHITE, markExit: false, playerOn: BLACK, playerOff: WHITE },
+  excruciating: { wall: BLACK, corridor: DIM, exit: DIM, markExit: false, playerOn: BLACK, playerOff: WHITE },
 };
 
 export const BLINK_ON_MS = 400;
@@ -50,17 +53,39 @@ export function blinkOn(elapsedMs) {
   return elapsedMs % BLINK_PERIOD < BLINK_ON_MS;
 }
 
+/** True when a blinker with this phase offset is showing white. */
+function showingWhite(elapsedMs, phaseMs) {
+  return (elapsedMs + phaseMs) % BLINK_PERIOD >= BLINK_ON_MS;
+}
+
+/**
+ * Which wall pixels blink, and out of phase by how much — derived from the pixel
+ * index rather than stored, so a million of them cost no memory and stay
+ * identical for everyone playing the same seed.
+ */
+function mix(idx, salt) {
+  let h = (idx ^ salt) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 export class FieldRenderer {
   constructor(field, mode) {
     this.grid = field.grid;
     this.exitIdx = field.exitIdx;
     this.mode = mode;
-    this.palette = PALETTES[mode.id] ?? PALETTES.medium;
+    this.palette = PALETTES[mode.id] ?? PALETTES.miserable;
 
     this.fogRadius = mode.fogRadius ?? Infinity;
     this.fogInner = Number.isFinite(this.fogRadius)
       ? Math.max(0, this.fogRadius - FOG_FALLOFF)
       : Infinity;
+
+    // False blinks (§8.4). Seeded off the field so everyone on a daily seed sees
+    // the same liars in the same places.
+    this.decoyOneIn = mode.blinkDecoys?.oneIn ?? 0;
+    this.decoySalt = (field.seed ^ 0x9e3779b9) >>> 0;
 
     this.buffer = new ArrayBuffer(FIELD_W * FIELD_H * 4);
     this.pixels = new Uint32Array(this.buffer);
@@ -69,17 +94,51 @@ export class FieldRenderer {
     this.last = { playerIdx: -1, blink: false };
   }
 
+  /**
+   * A corridor pixel that blinks exactly like the player: same two colours, same
+   * duty cycle, its own phase. Indistinguishable from you in a still frame.
+   *
+   * These sit on corridors, not on walls, and that is a safety property rather
+   * than a detail. A *wall* pixel flashing white would read as an opening, and
+   * under Excruciating's strict input policy pressing toward a wall is instant
+   * death — so a white-flashing wall could bait a fatal keypress, which is a
+   * death caused by the renderer lying rather than by the player. §4.4 rules
+   * that out. A corridor pixel drawn black merely looks blocked: steering around
+   * it costs time, and pressing into it anyway is perfectly safe, because
+   * collision is read from the grid and never from what is on screen.
+   *
+   * It is also the only version that actually confuses anyone. Blinking walls
+   * would flash white-in-black while the player flashes black-in-white — read as
+   * opposites at a glance rather than as candidates.
+   *
+   * The border ring is excluded: a flashing pixel there would read as the exit.
+   */
+  isBlinkDecoy(x, y, idx) {
+    if (this.decoyOneIn === 0 || this.grid[idx] !== CORRIDOR) return false;
+    if (idx === this.exitIdx) return false;
+    if (x <= RING_MIN_X || x >= RING_MAX_X || y <= RING_MIN_Y || y >= RING_MAX_Y) return false;
+    return mix(idx, this.decoySalt) % this.decoyOneIn === 0;
+  }
+
+  /** Whether a given false blink is in its white phase at time `t`. */
+  decoyShowingWhite(idx, t) {
+    return showingWhite(t, mix(idx, 0x51ed270b) % BLINK_PERIOD);
+  }
+
   colorAt(x, y, state) {
     const idx = y * FIELD_W + x;
 
     let base;
     // The player is always drawn explicitly, in its own two colours — never by
     // falling through to whatever is underneath. Deriving the off-phase from the
-    // corridor made the pixel blink black against #c8c8c8 on Hard rather than
-    // black against white, and on Hard the blink is the only way to find it.
+    // corridor made the pixel blink black against the dimmed #c8c8c8 corridors of
+    // Excruciating rather than black against white, and there the blink is the
+    // only way to find it.
     if (idx === state.playerIdx) base = state.blink ? this.palette.playerOn : this.palette.playerOff;
     else if (idx === this.exitIdx && this.palette.markExit) base = this.palette.exit;
-    else base = this.grid[idx] === CORRIDOR ? this.palette.corridor : this.palette.wall;
+    else if (this.isBlinkDecoy(x, y, idx)) {
+      base = this.decoyShowingWhite(idx, state.t ?? 0) ? this.palette.playerOff : this.palette.playerOn;
+    } else base = this.grid[idx] === CORRIDOR ? this.palette.corridor : this.palette.wall;
 
     if (this.fogRadius === Infinity) return base;
 
@@ -128,7 +187,12 @@ export class FieldRenderer {
     const moved = state.playerIdx !== this.last.playerIdx;
     const blinked = state.blink !== this.last.blink;
 
-    if (Number.isFinite(this.fogRadius) && (moved || blinked)) {
+    // Under fog the disc is repainted every frame, not only when the player moves
+    // or blinks: the false blinks (§8.4) run on their own phases and have to be
+    // animated. Everything outside the disc is black anyway, so this is the whole
+    // cost of them. Blink decoys therefore require fog — without it they would
+    // need a full-field repaint per frame.
+    if (Number.isFinite(this.fogRadius)) {
       rects.push(discBox(this.last.playerIdx, this.fogRadius, state.playerIdx));
     } else {
       if (moved && this.last.playerIdx >= 0) rects.push(pixelRect(this.last.playerIdx));
@@ -209,7 +273,7 @@ export function createCanvasSink(canvas, renderer) {
   };
 }
 
-// ── Hard-mode control display ───────────────────────────────────────────────
+// ── Excruciating control display ───────────────────────────────────────────────
 
 /**
  * The compass cross in the bottom-right (DESIGN.md §8.1).

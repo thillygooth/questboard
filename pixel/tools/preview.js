@@ -19,7 +19,7 @@ import { dailySeed } from '../src/rng.js';
 import { FIELD_W, FIELD_H, CORRIDOR } from '../src/field.js';
 import { encodePng, zoom } from './png.js';
 
-const modeId = process.argv[2] ?? 'hard';
+const modeId = process.argv[2] ?? 'excruciating';
 const isoDate = process.argv[3] ?? '2026-08-14';
 const mode = getMode(modeId);
 const seed = dailySeed(isoDate, modeId);

@@ -7,7 +7,7 @@
 // any other wall in the field.
 //
 // This is what makes run length tunable without compromising the spec — and it
-// is the central mechanic: in Easy the whole map is visible and almost entirely
+// is the central mechanic: in Unpleasant the whole map is visible and almost entirely
 // unreachable, with no way to tell which corridors connect to you.
 
 import { mulberry32, randInt, randRange } from './rng.js';
@@ -332,8 +332,8 @@ function carveBetween(grid, a, b) {
 // ── Spawn, exit, decoys ─────────────────────────────────────────────────────
 
 /**
- * Extra gaps in the ring. In Hard they open onto the player's own region and
- * kill; in Medium they open onto regions that can never be reached, so they cost
+ * Extra gaps in the ring. In Excruciating they open onto the player's own region and
+ * kill; in Miserable they open onto regions that can never be reached, so they cost
  * only time. Both are kept well away from the true exit so that a gap spotted at
  * distance is a real decision rather than a coin flip.
  */
@@ -374,7 +374,7 @@ function placeDecoys(rng, grid, regionOf, mode, exitIdx, dist, spawnIdx, solutio
   // Keep decoys away from the true exit so that a gap spotted at distance is a
   // real decision rather than a coin flip. The player region only touches the
   // ring in a handful of places though, so relax the spacing rather than give up
-  // and ship a Hard field with one decoy instead of three.
+  // and ship a Excruciating field with one decoy instead of three.
   const exitX = exitIdx % FIELD_W;
   const exitY = (exitIdx / FIELD_W) | 0;
   const chosen = [];

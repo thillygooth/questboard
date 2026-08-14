@@ -19,7 +19,7 @@ import { collapseRound, deadEndCount } from '../src/collapse.js';
 import { FIELD_W, FIELD_H } from '../src/field.js';
 import { encodeRgbPng, zoomRgb } from './png.js';
 
-const modeId = process.argv[2] ?? 'hard';
+const modeId = process.argv[2] ?? 'excruciating';
 const isoDate = process.argv[3] ?? '2026-08-14';
 const mode = getMode(modeId);
 
@@ -51,16 +51,19 @@ function shot(name, factor = 4) {
 
 // Blink on, then off: the player is the wall colour, so the off-phase should
 // leave a corridor pixel and the on-phase should leave something wall-coloured.
-renderer.paintAll({ playerIdx, blink: true });
+renderer.paintAll({ playerIdx, blink: true, t: 0 });
 const litOn = renderer.pixels[playerIdx];
 shot('blink-on');
 
-renderer.paintAll({ playerIdx, blink: false });
+renderer.paintAll({ playerIdx, blink: false, t: 0 });
 const litOff = renderer.pixels[playerIdx];
 shot('blink-off');
 
+renderer.paintAll({ playerIdx, blink: true, t: 250 });
+shot('false-blinks');
+
 // Collapse: watch the maze breathe inward around a stationary player.
-renderer.paintAll({ playerIdx, blink: true });
+renderer.paintAll({ playerIdx, blink: true, t: 0 });
 shot('collapse-0');
 
 const opts = { playerIdx, protectIdx, radius: mode.collapse?.radius ?? Infinity };
@@ -70,8 +73,8 @@ for (let round = 1; round <= 40; round++) {
   const { filled, playerDoomed } = collapseRound(field.grid, opts);
   filledTotal += filled.length;
   if (playerDoomed && doomedAt < 0) doomedAt = round;
-  if (round === 8) { renderer.paintAll({ playerIdx, blink: true }); shot('collapse-8'); }
-  if (round === 40) { renderer.paintAll({ playerIdx, blink: true }); shot('collapse-40'); }
+  if (round === 8) { renderer.paintAll({ playerIdx, blink: true, t: 0 }); shot('collapse-8'); }
+  if (round === 40) { renderer.paintAll({ playerIdx, blink: true, t: 0 }); shot('collapse-40'); }
 }
 
 // ── Dirty-rect equivalence ──────────────────────────────────────────────────
@@ -80,19 +83,41 @@ for (let round = 1; round <= 40; round++) {
 const a = new FieldRenderer(field, mode);
 const b = new FieldRenderer(field, mode);
 let start = path[Math.floor(path.length * 0.45)];
-a.paintAll({ playerIdx: start, blink: true });
-b.paintAll({ playerIdx: start, blink: true });
+a.paintAll({ playerIdx: start, blink: true, t: 0 });
+b.paintAll({ playerIdx: start, blink: true, t: 0 });
 
 let cursor = Math.floor(path.length * 0.45);
 for (let step = 0; step < 60; step++) {
   cursor = Math.max(0, cursor - 1);
   const idx = path[cursor];
-  const blink = blinkOn(step * 33);
-  a.paintFrame({ playerIdx: idx, blink });          // incremental
-  b.paintAll({ playerIdx: idx, blink });            // ground truth
+  // Time advances, so the false blinks are animating on their own phases while
+  // this runs — the incremental path has to keep up with them too.
+  const t = step * 33;
+  const blink = blinkOn(t);
+  a.paintFrame({ playerIdx: idx, blink, t });          // incremental
+  b.paintAll({ playerIdx: idx, blink, t });            // ground truth
 }
 let mismatches = 0;
 for (let i = 0; i < a.pixels.length; i++) if (a.pixels[i] !== b.pixels[i]) mismatches++;
+
+// How many liars are actually in view, and how many are lit at this instant.
+let decoysInDisc = 0;
+let decoysWhiteNow = 0;
+if (renderer.decoyOneIn > 0) {
+  const r = mode.fogRadius;
+  const px0 = playerIdx % FIELD_W;
+  const py0 = (playerIdx / FIELD_W) | 0;
+  for (let y = py0 - r; y <= py0 + r; y++) {
+    for (let x = px0 - r; x <= px0 + r; x++) {
+      if (x < 0 || y < 0 || x >= FIELD_W || y >= FIELD_H) continue;
+      if ((x - px0) ** 2 + (y - py0) ** 2 > r * r) continue;
+      const idx = y * FIELD_W + x;
+      if (!renderer.isBlinkDecoy(x, y, idx)) continue;
+      decoysInDisc++;
+      if (renderer.decoyShowingWhite(idx, 250)) decoysWhiteNow++;
+    }
+  }
+}
 
 const hex = (c) => `#${(c & 0xff).toString(16).padStart(2, '0')}${((c >>> 8) & 0xff).toString(16).padStart(2, '0')}${((c >>> 16) & 0xff).toString(16).padStart(2, '0')}`;
 
@@ -100,6 +125,9 @@ console.log(`${mode.name}  ${isoDate}`);
 console.log(`  player at    (${playerIdx % FIELD_W}, ${(playerIdx / FIELD_W) | 0}), ${Math.round(path.length * 0.45)} moves along a ${path.length}-move solution`);
 console.log(`  blink on     ${hex(litOn)}   blink off ${hex(litOff)}  ${litOn !== litOff ? '(differ, correct)' : '(IDENTICAL — blink invisible)'}`);
 console.log(`  fog radius   ${mode.fogRadius}`);
+if (renderer.decoyOneIn > 0) {
+  console.log(`  false blinks 1 in ${renderer.decoyOneIn} corridor pixels, drawn exactly like the player; ${decoysInDisc} inside the fog disc, ${decoysWhiteNow} in their white phase right now`);
+}
 console.log(`  collapse     40 rounds filled ${filledTotal.toLocaleString()}px within r=${opts.radius}, dead ends left ${deadEndCount(field.grid, protectIdx).toLocaleString()}`);
 console.log(`  player doomed at round ${doomedAt < 0 ? 'never (not in a stub)' : doomedAt}`);
 console.log(`  dirty-rect equivalence over 60 frames: ${mismatches === 0 ? 'exact match' : `${mismatches} MISMATCHED PIXELS`}`);

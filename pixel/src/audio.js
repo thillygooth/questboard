@@ -1,7 +1,7 @@
 // Sonar. See DESIGN.md §8.3.
 //
 // A tick per cell travelled, rising in pitch as the distance to the true exit
-// falls. Under Hard's fog this is the only global information in the game, and
+// falls. Under Excruciating's fog this is the only global information in the game, and
 // it is what makes the mode theoretically completable: it turns blind junction
 // guesses into informed ones and lets a careful player tell the real exit from a
 // decoy before committing.

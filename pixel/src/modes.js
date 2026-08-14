@@ -8,9 +8,9 @@
 // `solutionBand` is in pixel-moves, which is what the player actually presses.
 
 export const MODES = {
-  easy: {
-    id: 'easy',
-    name: 'EASY',
+  unpleasant: {
+    id: 'unpleasant',
+    name: 'UNPLEASANT',
     tagline: 'brutal but fair',
 
     regionCells: 6000,
@@ -34,9 +34,9 @@ export const MODES = {
     allowPause: true,
   },
 
-  medium: {
-    id: 'medium',
-    name: 'MEDIUM',
+  miserable: {
+    id: 'miserable',
+    name: 'MISERABLE',
     tagline: 'fair core, cruel garnish',
 
     regionCells: 14000,
@@ -60,9 +60,9 @@ export const MODES = {
     allowPause: false,
   },
 
-  hard: {
-    id: 'hard',
-    name: 'HARD',
+  excruciating: {
+    id: 'excruciating',
+    name: 'EXCRUCIATING',
     tagline: 'actively hostile',
 
     regionCells: 20000,
@@ -80,6 +80,9 @@ export const MODES = {
     studyMs: 0,
     fogRadius: 70,
     sonar: { minHz: 200, maxHz: 1200 },
+    // One corridor pixel in every thousand blinks exactly like you do, so the
+    // blink stops telling you which pixel is you. See DESIGN.md §8.4.
+    blinkDecoys: { oneIn: 1000 },
     remapControls: { minMs: 15_000, maxMs: 35_000, cooldownMs: 3000 },
     collapse: { periodMs: 8000, radius: 300 },
     blurEndsRun: true,
@@ -87,7 +90,7 @@ export const MODES = {
   },
 };
 
-export const MODE_IDS = ['easy', 'medium', 'hard'];
+export const MODE_IDS = ['unpleasant', 'miserable', 'excruciating'];
 
 export function getMode(id) {
   const mode = MODES[id];

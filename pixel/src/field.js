@@ -36,7 +36,7 @@ export const RING_MAX_Y = ACTIVE_H - 1; // 1078
 export const LAT_W = 959; // px 1 .. 1917
 export const LAT_H = 539; // px 1 .. 1077
 
-// Bottom-right block held as solid wall so the Hard-mode control HUD never
+// Bottom-right block held as solid wall so the Excruciating control HUD never
 // occludes playable space (DESIGN.md §8.1).
 export const HUD_W = 240;
 export const HUD_H = 140;

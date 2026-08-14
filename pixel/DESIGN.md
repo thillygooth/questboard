@@ -47,7 +47,7 @@ happens. Given walls are black so the surrounding wall is black, the player is b
 | Field | 1920 × 1080, exactly 1 maze cell per device pixel |
 | Corridor lattice | odd coordinates only → 959 × 539 = **516,901** potential corridor cells |
 | Wall | `#000000` |
-| Corridor | `#ffffff` (`#c8c8c8` on Hard, lowering contrast) |
+| Corridor | `#ffffff` (`#c8c8c8` on Excruciating, lowering contrast) |
 | Player | `#000000`, blinking (see §6) — exactly the wall colour |
 | Exit | a single `#ffffff` opening in the black border ring |
 
@@ -85,7 +85,7 @@ generation.
 │ █ ██ ████ █ ███ █ █ ████ █ ███ ████ ████ █ │
 │ █    █    █     █ █      █   █      █    █ │
 │ ███████████████████████████████████████████│
-│                                    ┌──────┐│  ← HUD reserve (Hard mode):
+│                                    ┌──────┐│  ← HUD reserve (Excruciating mode):
 │ ██ ████ █ ████ ███ █ ████ ██ ███   │ ▲    ││    240 × 140 of solid wall,
 │ █     █ █ █      █ █    █  █   █   │◀ ▼ ▶ ││    generated as dead space so
 └────────────────────────────────────┴──────┘│    the HUD occludes nothing playable
@@ -105,7 +105,7 @@ generation.
 - **Spawn** — a random corridor cell adjacent to the border ring, i.e. on the periphery,
   on a *different edge* from the exit and at least 900px away from it (§4.3).
 - **HUD reserve** — bottom-right 240 × 140 block, held as solid wall at generation time
-  so that the Hard-mode control display never covers playable space.
+  so that the Excruciating control display never covers playable space.
 
 ---
 
@@ -136,7 +136,7 @@ The player and the exit live in one region. Every other region is unreachable.
 
 This is the best idea in the design, and it is worth being explicit about why:
 
-> **In Easy mode you can see the entire map, and it is almost entirely useless.**
+> **In Unpleasant mode you can see the entire map, and it is almost entirely useless.**
 > 1920 × 1080 of visible maze, and you cannot tell by looking which corridors connect
 > to you. Route planning becomes reasoning about connectivity under uncertainty. The
 > map is complete, honest, and nearly worthless — the game never lies to you, it just
@@ -203,7 +203,7 @@ Every seed is verified before it is played, by simulating a perfect player **und
 mode's actual rules** — including collapse timing, no-reversal if set, and fog. If a
 theoretically perfect player cannot escape, the seed is rejected.
 
-This is the line between the hardest game and a broken one. Without it, Hard mode is a
+This is the line between the hardest game and a broken one. Without it, Excruciating mode is a
 random number generator that sometimes kills you. With it, every death is provably the
 player's, and the claim "this is beatable" is a fact rather than a hope.
 
@@ -226,7 +226,7 @@ the game would be a typing test. With it, decisions arrive at a human rate of ro
 2–5 per second.
 
 **Reversal.** Turning back the way you came. Allowed in all three modes. It is tempting
-to forbid it in Hard, and it was considered and rejected — see §13.
+to forbid it in Excruciating, and it was considered and rejected — see §13.
 
 ---
 
@@ -237,7 +237,7 @@ The player blinks in every mode: **400 ms on, 200 ms off.**
 While on, you are `#000000` and read as a wall. While off, you are `#ffffff` and read as
 open corridor. Both are drawn explicitly, never by letting the underlying cell show
 through: deriving the off-phase from the corridor made the pixel blink black against
-`#c8c8c8` on Hard, where the corridors are dimmed — and on Hard the blink is the only
+`#c8c8c8` on Excruciating, where the corridors are dimmed — and on Excruciating the blink is the only
 way to find yourself at all. The pixel therefore flickers between "blocked" and "clear," which is both
 how you locate yourself in a field of half a million pixels and why the maze immediately
 around you is the part you read worst.
@@ -245,6 +245,10 @@ around you is the part you read worst.
 The blink is not a difficulty setting. It is the only thing that makes a single pixel
 findable in a 1920 × 1080 static field, and removing it would not make the game harder,
 only unplayable.
+
+On Excruciating that stops being true, deliberately: false blinks (§8.4) put about a
+thousand other pixels on the same rhythm, and identifying yourself falls to motion
+instead.
 
 Off-phase is cosmetic only. Collision is continuous — you can die during the dark phase.
 
@@ -255,7 +259,7 @@ Off-phase is cosmetic only. Collision is continuous — you can die during the d
 One life in all three. Timer starts when the countdown reaches zero and stops on win or
 death.
 
-| | **EASY** | **MEDIUM** | **HARD** |
+| | **UNPLEASANT** | **MISERABLE** | **EXCRUCIATING** |
 |---|---|---|---|
 | Movement | discrete step, 25 cells/s repeat | auto-run 18 cells/s, +1 every 20 s | auto-run 20 cells/s, +1 every 20 s |
 | Stop and think | yes, indefinitely | no | no |
@@ -273,23 +277,23 @@ death.
 | Target solution | 800–2,000 cells | 2,000–4,000 cells | 3,000–6,000 cells |
 | Par time | ~35–80 s | ~110–220 s | ~150–300 s |
 
-**Easy — brutal but fair.** Nothing surprises you and nothing moves without your input.
+**Unpleasant — brutal but fair.** Nothing surprises you and nothing moves without your input.
 The whole field is visible. It is hard for exactly two reasons: 1px corridors punish
 imprecise reading, and the visible map is mostly unreachable regions you cannot identify.
 Finding the exit means scanning ~6,000 border pixels for the single white one.
 
-**Medium — fair core, cruel garnish.** You can no longer stop. Speed ramps. The false
+**Miserable — fair core, cruel garnish.** You can no longer stop. Speed ramps. The false
 gaps waste your time but cannot kill you — they belong to regions you can never reach,
 which you have no way to determine except by trying. No pause, and leaving the window
 ends the run.
 
-**Hard — actively hostile.** Fog reduces you to a 70 px disc of local knowledge. Controls
+**Excruciating — actively hostile.** Fog reduces you to a 70 px disc of local knowledge. Controls
 are reassigned at random intervals and shown, not announced. Decoy gaps kill. Dead ends
 collapse around you. Sonar is your only global information.
 
 ---
 
-## 8. Hard mode systems
+## 8. Excruciating mode systems
 
 ### 8.1 The control display
 
@@ -327,7 +331,7 @@ corridor cells **inside the player's own region** — so they are genuinely reac
 
 Entering a decoy displays `YOU WIN` for 600 ms, then `YOU LOSE`. The run is over.
 
-This is the one deliberately dishonest mechanic in the game, and it is confined to Hard
+This is the one deliberately dishonest mechanic in the game, and it is confined to Excruciating
 mode by design. It is survivable knowledge: a player who has seen it once knows that a
 gap is not a guarantee, and sonar (§8.3) distinguishes the true exit from a decoy for
 anyone paying attention. It is cruel, not unfair.
@@ -337,12 +341,46 @@ anyone paying attention. It is cruel, not unfair.
 A soft tick sounds once per cell travelled. Its pitch rises as your BFS distance to the
 true exit falls — roughly 200 Hz at maximum distance to 1200 Hz at the exit.
 
-Under fog this is the only global information in the game, and it is what makes Hard
+Under fog this is the only global information in the game, and it is what makes Excruciating
 theoretically completable: it converts blind junction guesses into informed ones and
 lets a careful player distinguish the real exit from a decoy before committing.
 
 It is also, deliberately, hard to use — you are parsing pitch derivative at 20 ticks per
 second while watching a HUD that may have just changed.
+
+---
+
+### 8.4 False blinks
+
+One corridor pixel in every thousand blinks **exactly like the player**: same two
+colours, same 400/200 duty cycle, its own phase offset. Across the field that is about
+a thousand of them; inside the 70px fog disc it works out at roughly seven, of which
+two or three are in their white phase at any instant.
+
+The effect is that on Excruciating the blink stops being your identifier. §6 says the
+blink is the only thing that distinguishes you from the world — here that stops being
+true, and **motion becomes the only thing that identifies you.** You are the blinking
+pixel that moves. Everything else that blinks is standing still.
+
+Two constraints are load-bearing:
+
+**They sit on corridors, never on walls.** A wall pixel flashing white reads as an
+opening, and under Excruciating's strict input policy pressing toward a wall is instant
+death — so a blinking wall could bait a fatal keypress, a death caused by the renderer
+lying rather than by the player. §4.4 rules that out. A corridor pixel drawn black
+merely looks blocked: steering around it costs time, and pressing into it anyway is
+perfectly safe, because collision is read from the grid and never from what is on
+screen. Nothing a false blink does can kill you.
+
+**They must look like the player, not like the inverse of the player.** Blinking walls
+were built first and were useless: they flash white-in-black while the player flashes
+black-in-white, so they read as opposites at a glance rather than as candidates. Only a
+corridor pixel running the player's own two colours is genuinely ambiguous.
+
+They are derived by hashing the pixel index against the field seed rather than stored,
+so a thousand of them cost no memory and everyone on a daily seed sees the same liars
+in the same places. They also require fog: the lit disc is repainted every frame to
+animate them, which is affordable only because everything outside it is black anyway.
 
 ---
 
@@ -360,7 +398,7 @@ The threat is that it closes in on *you*, not on the exit. Standing in a stub wh
 fills is death. Lingering, hesitating, and backtracking all become materially dangerous
 without any explicit timer.
 
-**Local by default.** In Hard, collapse only applies within 300 px of the player. Global
+**Local by default.** In Excruciating, collapse only applies within 300 px of the player. Global
 collapse would eventually reduce the whole region to a single winding line from you to
 the exit — the maze would solve itself for anyone who survived long enough. That is a
 beautiful arc and probably too generous; it is reserved for a separate "Collapse"
@@ -382,7 +420,7 @@ of the routes joining the player, the exit and each decoy.
 instead reduces the region to the bare solution corridor in a single frame and hands the
 player the answer.
 
-Verified directly (`npm run verify`): collapsing a Hard field to its fixpoint fills
+Verified directly (`npm run verify`): collapsing a Excruciating field to its fixpoint fills
 ~1,005,000 pixels — 98.8% of the maze — and leaves the solution length **exactly
 unchanged**, with zero dead ends remaining.
 
@@ -399,14 +437,14 @@ MENU ──┬── BEGIN ──→ MODE SELECT ──→ COUNTDOWN ──→ P
 ```
 
 **Rules** is a menu item, per the spec, and states the rules per mode — including,
-explicitly, that Hard mode contains gaps in the wall that are not the exit. The game is
+explicitly, that Excruciating mode contains gaps in the wall that are not the exit. The game is
 allowed to kill you with a decoy; it is not allowed to have never told you decoys exist.
 
 **Countdown** doubles as study time and as cover for generation. Mode-dependent: 3 s, 1 s,
 or a single frame.
 
 **Result** shows elapsed time, moves taken versus par, and — on a death — your closest
-approach, the minimum BFS distance to the exit you reached. On most Hard runs this is
+approach, the minimum BFS distance to the exit you reached. On most Excruciating runs this is
 the only number anyone will have.
 
 ---
@@ -420,12 +458,12 @@ Combined with one life this gives the shape the game wants: **one attempt per mo
 day.** You die, that mode is gone until tomorrow.
 
 - **Free Play** — unlimited random seeds, unranked. This is where you practise, and it is
-  what makes one-life-per-day tolerable rather than merely punishing. It is also, on Hard,
+  what makes one-life-per-day tolerable rather than merely punishing. It is also, on Excruciating,
   almost certainly how anyone who ever finishes will have prepared.
 - **Escape board** — per mode, per day, ranked by time ascending. Fields: name, mode,
   seed date, time, moves, par moves.
 - **Progress board** — per mode, per day, ranked by closest approach. This exists because
-  on Hard the escape board will frequently be empty, and a leaderboard of people who
+  on Excruciating the escape board will frequently be empty, and a leaderboard of people who
   nearly made it is still a leaderboard.
 - **All-time** — best time per mode across all daily seeds, with the seed date shown.
 
@@ -455,9 +493,9 @@ bug reports, and the §4.4 solver.
 
 ## 13. Decisions taken, with reasons
 
-**No-reversal in Hard was rejected.** It is the most obviously brutal modifier available
+**No-reversal in Excruciating was rejected.** It is the most obviously brutal modifier available
 and it does not survive arithmetic. Measured on generated fields, junctions fall roughly
-one per 21–31 pixels of solution, so a Hard run presents **400–700 junctions** (not the
+one per 21–31 pixels of solution, so a Excruciating run presents **400–700 junctions** (not the
 ~1,000 first estimated from a guessed junction density — the real figure is lower because
 recursive-backtracker mazes run long and straight). It changes nothing: without reversal
 every junction must be guessed correctly on first contact, and 2⁻⁴⁰⁰ is not meaningfully
@@ -493,25 +531,26 @@ note at the top of `src/field.js` for why, and why the wall reads 2px thick on t
 | `MIN_END_SEPARATION` | 900 px ✓ | spawn to exit, Manhattan, different edges |
 | `SPINE_DRIFT` | 0.32 ✓ | share of spine steps that ignore the target |
 | `BLINK_ON` / `BLINK_OFF` | 400 ms / 200 ms | all modes |
-| `regionCells` | 6,000 / 14,000 / 20,000 ✓ | Easy / Medium / Hard |
+| `regionCells` | 6,000 / 14,000 / 20,000 ✓ | Unpleasant / Miserable / Excruciating |
 | `solutionBand` | 4,000–6,400 / 7,000–12,200 / 9,800–15,500 ✓ | pixel-moves |
-| `stepRate` | 40 / 45 / 60 px/s ✓ | Easy / Medium / Hard |
-| `speedRamp` | +2 px/s per 20 s | Medium and Hard |
-| `decoyCount` | 0 / 2 / 3 ✓ | Easy / Medium / Hard |
+| `stepRate` | 40 / 45 / 60 px/s ✓ | Unpleasant / Miserable / Excruciating |
+| `speedRamp` | +2 px/s per 20 s | Miserable and Excruciating |
+| `decoyCount` | 0 / 2 / 3 ✓ | Unpleasant / Miserable / Excruciating |
 | `MIN_SPAWN_PIXELS` | 320 ✓ | decoy to spawn, Manhattan |
 | `minSpawnMoves` | 15% of solution ✓ | lethal decoys only, along the maze |
-| `FOG_RADIUS` | 70 px | Hard |
-| `COLLAPSE_PERIOD` | 8 s | Hard |
-| `COLLAPSE_RADIUS` | 300 px | Hard; ∞ in Collapse variant |
-| `REMAP_INTERVAL` | 15–35 s | Hard, seeded random |
+| `FOG_RADIUS` | 70 px | Excruciating |
+| `COLLAPSE_PERIOD` | 8 s | Excruciating |
+| `COLLAPSE_RADIUS` | 300 px | Excruciating; ∞ in Collapse variant |
+| `REMAP_INTERVAL` | 15–35 s | Excruciating, seeded random |
 | `REMAP_COOLDOWN` | 3 s | minimum between reassignments |
 | `SONAR_HZ` | 200 → 1200 | far → near |
+| `blinkDecoys.oneIn` | 1000 ✓ | corridor pixels blinking as the player; ~7 in the fog disc |
 
 ### Move zero must never be fatal
 
 An auto-run mode with no starting heading kills the player on their first move: at
 a spawn with two ways on, the run logic sees a junction it has no answer for and calls
-it a wall. On Hard, whose countdown is a single frame, that is a death in 0.02 seconds
+it a wall. On Excruciating, whose countdown is a single frame, that is a death in 0.02 seconds
 that no skill could avoid — precisely the unavoidable death §4.4 exists to rule out. It
 survived unit testing because a perfect player presses on the first tick; only running
 the real browser exposed it.
@@ -519,13 +558,13 @@ the real browser exposed it.
 The pixel therefore starts with a heading pointing in off the periphery, and
 `npm run playthrough` asserts that a player who presses **nothing at all** dies at a
 junction they failed to steer through rather than before they could react. An idle
-player currently survives 4 moves on Medium and 959 moves — 16 seconds — on Hard.
+player currently survives 4 moves on Miserable and 959 moves — 16 seconds — on Excruciating.
 
 ### What the generator actually produces
 
 Measured over three daily seeds per mode (`node tools/verify.js`):
 
-| | Easy | Medium | Hard |
+| | Unpleasant | Miserable | Excruciating |
 |---|---|---|---|
 | Solution | 4,411–5,491 moves | 8,207–10,125 | 11,099–15,027 |
 | Par | 110–137 s | 182–225 s | 185–250 s |
@@ -536,7 +575,7 @@ Measured over three daily seeds per mode (`node tools/verify.js`):
 | Generation | ~400 ms, 1 attempt | ~390 ms, 1 attempt | ~400 ms, 1 attempt |
 
 The last two rows are the design working as intended and are worth stating plainly: on
-Hard the player can see about a million corridor pixels and can reach 40,003 of them.
+Excruciating the player can see about a million corridor pixels and can reach 40,003 of them.
 Over 96% of the maze on screen is scenery, and nothing distinguishes it from the part
 that matters.
 
@@ -594,7 +633,7 @@ Fair (they add information cost, not randomness):
   that never kills you outright.
 - **Mirror.** The render is horizontally mirrored; collision follows the true field.
 
-Hostile (Hard-tier only, and know what you are choosing):
+Hostile (Excruciating-tier only, and know what you are choosing):
 
 - **Poisoned memory.** For one frame every 5 seconds, render a *different* randomly
   generated field. Collision unaffected. Defeats screenshots and corrupts memorisation.

@@ -84,14 +84,14 @@ for (const id of MODE_IDS) {
 // ── Collapse safety (DESIGN.md §9) ──────────────────────────────────────────
 //
 // The claim that makes dead-end collapse usable is that it cannot sever the
-// route to the exit. Assert it directly: collapse a Hard field all the way to
+// route to the exit. Assert it directly: collapse a Excruciating field all the way to
 // its fixpoint and check the solution is still there, and still the same length.
 
 console.log('── COLLAPSE — dead-end filling must preserve the solution');
 {
-  const mode = getMode('hard');
+  const mode = getMode('excruciating');
   for (let i = 0; i < 3; i++) {
-    const seed = dailySeed(`2026-09-0${1 + i}`, 'hard');
+    const seed = dailySeed(`2026-09-0${1 + i}`, 'excruciating');
     const field = generateField(seed, mode);
     const protectIdx = [field.exitIdx, ...field.decoyIdx];
 

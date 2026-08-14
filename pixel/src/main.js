@@ -55,7 +55,7 @@ function begin(modeId, ranked) {
   sonar = new Sonar(mode.sonar);
   sonar.start();
 
-  const rects = renderer.paintAll({ playerIdx: game.idx, blink: true });
+  const rects = renderer.paintAll({ playerIdx: game.idx, blink: true, t: 0 });
   sink.blit(rects);
   if (mode.remapControls) {
     drawHud(sink.ctx, game.controls.mapping);
@@ -80,7 +80,7 @@ function begin(modeId, ranked) {
 
     const snap = game.snapshot();
     const painted = renderer.paintFrame(
-      { playerIdx: snap.playerIdx, blink: blinkOn(snap.runMs) },
+      { playerIdx: snap.playerIdx, blink: blinkOn(snap.runMs), t: snap.runMs },
       collapsed,
     );
     sink.blit(painted);
