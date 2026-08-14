@@ -3,8 +3,8 @@
 > A maze game in which you are one white pixel, the maze is one pixel wide, and
 > the only way out is the single missing pixel in the wall that surrounds the world.
 
-**Status:** generator, solver, collapse and renderer built and verified; game loop
-and input not yet written. See §15 for what exists.
+**Status:** playable end to end. Generator, solver, collapse, renderer, simulation,
+input, leaderboard and sonar are built and verified. See §15.
 **Scope:** standalone project. No dependency on Questboard; lives in `pixel/` for now.
 
 ---
@@ -493,6 +493,20 @@ note at the top of `src/field.js` for why, and why the wall reads 2px thick on t
 | `REMAP_COOLDOWN` | 3 s | minimum between reassignments |
 | `SONAR_HZ` | 200 → 1200 | far → near |
 
+### Move zero must never be fatal
+
+An auto-run mode with no starting heading kills the player on their first move: at
+a spawn with two ways on, the run logic sees a junction it has no answer for and calls
+it a wall. On Hard, whose countdown is a single frame, that is a death in 0.02 seconds
+that no skill could avoid — precisely the unavoidable death §4.4 exists to rule out. It
+survived unit testing because a perfect player presses on the first tick; only running
+the real browser exposed it.
+
+The pixel therefore starts with a heading pointing in off the periphery, and
+`npm run playthrough` asserts that a player who presses **nothing at all** dies at a
+junction they failed to steer through rather than before they could react. An idle
+player currently survives 4 moves on Medium and 959 moves — 16 seconds — on Hard.
+
 ### What the generator actually produces
 
 Measured over three daily seeds per mode (`node tools/verify.js`):
@@ -530,14 +544,17 @@ pixel/
     modes.js        the three rule sets, as data           ✓ built
     collapse.js     dead-end filling                       ✓ built
     render.js       framebuffer, dirty rects, fog, HUD     ✓ built
-    game.js         fixed-timestep loop, state machine
-    input.js        keymap, buffering policy, reassignment schedule
-    audio.js        sonar
-    board.js        leaderboards, replay encoding
+    game.js         fixed-timestep loop, state machine     ✓ built
+    input.js        keymap, buffering policy, reassignment ✓ built
+    audio.js        sonar                                  ✓ built
+    board.js        leaderboards, one life, replay stub    ✓ built
+    main.js         browser shell: screens and the loop    ✓ built
   tools/
     verify.js       generation harness + invariant checks  ✓ built
     preview.js      PNG dumps of generated fields          ✓ built
     frame.js        rendered frames + dirty-rect check     ✓ built
+    playthrough.js  perfect player under each mode's rules ✓ built
+    e2e.js          browser smoke test                     ✓ built
     png.js          indexed and truecolour PNG encoders    ✓ built
 ```
 
@@ -545,6 +562,8 @@ pixel/
 npm run verify     # generate across all modes, assert §4.4 invariants
 npm run preview    # node tools/preview.js [mode] [isoDate] → tools/out/*.png
 npm run frame      # node tools/frame.js   [mode] [isoDate] → rendered frames
+npm run playthrough # perfect player completes every mode; idle player survives
+npm run e2e        # real Chromium: menu → run → death → leaderboard
 ```
 
 ---

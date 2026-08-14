@@ -7,6 +7,10 @@
   "scripts": {
     "verify": "node tools/verify.js",
     "preview": "node tools/preview.js",
-    "frame": "node tools/frame.js"
+    "frame": "node tools/frame.js",
+    "e2e": "node tools/e2e.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
   }
 }
