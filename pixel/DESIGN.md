@@ -3,8 +3,8 @@
 > A maze game in which you are one white pixel, the maze is one pixel wide, and
 > the only way out is the single missing pixel in the wall that surrounds the world.
 
-**Status:** generator and solver built and verified; game loop, renderer and
-input not yet written. See §15 for what exists.
+**Status:** generator, solver, collapse and renderer built and verified; game loop
+and input not yet written. See §15 for what exists.
 **Scope:** standalone project. No dependency on Questboard; lives in `pixel/` for now.
 
 ---
@@ -356,6 +356,22 @@ variant where it is the point rather than a side effect.
 Rendering: collapsed cells flip from black to white. At 1px, a collapse round reads as
 the maze visibly *breathing inward*, which is the best-looking thing in the game.
 
+Two things the implementation makes non-negotiable:
+
+**The exit and every decoy must be protected explicitly.** They sit in the border ring
+with exactly one corridor neighbour, so they are permanently degree-1 — without an
+exemption the very first tick quietly walls up the way out. A protected pixel also
+anchors its whole branch against collapse, so what survives at the fixpoint is the union
+of the routes joining the player, the exit and each decoy.
+
+**A tick fills one layer, collected before anything is filled.** Iterating to a fixpoint
+instead reduces the region to the bare solution corridor in a single frame and hands the
+player the answer.
+
+Verified directly (`npm run verify`): collapsing a Hard field to its fixpoint fills
+~1,005,000 pixels — 98.8% of the maze — and leaves the solution length **exactly
+unchanged**, with zero dead ends remaining.
+
 ---
 
 ## 10. Screens
@@ -512,21 +528,23 @@ pixel/
     maze.js         spine, region partition, carving       ✓ built
     solver.js       BFS, par time, seed validation         ✓ built
     modes.js        the three rule sets, as data           ✓ built
-    collapse.js     dead-end filling
+    collapse.js     dead-end filling                       ✓ built
+    render.js       framebuffer, dirty rects, fog, HUD     ✓ built
     game.js         fixed-timestep loop, state machine
-    render.js       framebuffer, dirty rects, fog, HUD
     input.js        keymap, buffering policy, reassignment schedule
     audio.js        sonar
     board.js        leaderboards, replay encoding
   tools/
     verify.js       generation harness + invariant checks  ✓ built
     preview.js      PNG dumps of generated fields          ✓ built
-    png.js          minimal indexed-colour PNG encoder     ✓ built
+    frame.js        rendered frames + dirty-rect check     ✓ built
+    png.js          indexed and truecolour PNG encoders    ✓ built
 ```
 
 ```bash
 npm run verify     # generate across all modes, assert §4.4 invariants
 npm run preview    # node tools/preview.js [mode] [isoDate] → tools/out/*.png
+npm run frame      # node tools/frame.js   [mode] [isoDate] → rendered frames
 ```
 
 ---

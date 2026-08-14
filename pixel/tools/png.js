@@ -76,6 +76,54 @@ export function encodePng(indices, width, height, palette = PALETTE) {
   ]);
 }
 
+/**
+ * Encode a Uint32Array framebuffer (0xAABBGGRR, as ImageData stores it) as a
+ * truecolour PNG. Used for renderer output, which has fog greys and so cannot
+ * use the indexed path.
+ */
+export function encodeRgbPng(u32, width, height) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // colour type: truecolour
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  let o = 0;
+  for (let y = 0; y < height; y++) {
+    raw[o++] = 0; // filter: none
+    for (let x = 0; x < width; x++) {
+      const c = u32[y * width + x];
+      raw[o++] = c & 0xff;
+      raw[o++] = (c >>> 8) & 0xff;
+      raw[o++] = (c >>> 16) & 0xff;
+    }
+  }
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+/** Nearest-neighbour crop-and-zoom on a Uint32Array framebuffer. */
+export function zoomRgb(u32, width, cropX, cropY, cropW, cropH, factor) {
+  const out = new Uint32Array(cropW * factor * cropH * factor);
+  for (let y = 0; y < cropH * factor; y++) {
+    const sy = cropY + ((y / factor) | 0);
+    for (let x = 0; x < cropW * factor; x++) {
+      const sx = cropX + ((x / factor) | 0);
+      out[y * cropW * factor + x] = u32[sy * width + sx];
+    }
+  }
+  return out;
+}
+
 /** Nearest-neighbour crop-and-zoom, so 1px detail survives being looked at. */
 export function zoom(indices, width, cropX, cropY, cropW, cropH, factor) {
   const out = new Uint8Array(cropW * factor * cropH * factor);

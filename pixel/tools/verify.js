@@ -8,6 +8,7 @@ import { generateField } from '../src/maze.js';
 import { validate, bfsFrom, pathFrom, countJunctions, reachableCount, UNREACHABLE } from '../src/solver.js';
 import { dailySeed } from '../src/rng.js';
 import { LAT_W, LAT_H, CORRIDOR, FIELD_W } from '../src/field.js';
+import { collapseToFixpoint, degreeAt } from '../src/collapse.js';
 
 const seedsPerMode = Number(process.argv[2] ?? 3);
 let failures = 0;
@@ -80,8 +81,54 @@ for (const id of MODE_IDS) {
   console.log(`   mean solution ${fmt(Math.round(mean))} moves ≈ ${(mean / mode.stepRate).toFixed(0)}s at ${mode.stepRate} px/s\n`);
 }
 
+// ── Collapse safety (DESIGN.md §9) ──────────────────────────────────────────
+//
+// The claim that makes dead-end collapse usable is that it cannot sever the
+// route to the exit. Assert it directly: collapse a Hard field all the way to
+// its fixpoint and check the solution is still there, and still the same length.
+
+console.log('── COLLAPSE — dead-end filling must preserve the solution');
+{
+  const mode = getMode('hard');
+  for (let i = 0; i < 3; i++) {
+    const seed = dailySeed(`2026-09-0${1 + i}`, 'hard');
+    const field = generateField(seed, mode);
+    const protectIdx = [field.exitIdx, ...field.decoyIdx];
+
+    const before = bfsFrom(field.grid, field.spawnIdx)[field.exitIdx];
+    let corridorsBefore = 0;
+    for (let k = 0; k < field.grid.length; k++) if (field.grid[k] === CORRIDOR) corridorsBefore++;
+
+    const t0 = performance.now();
+    const { total } = collapseToFixpoint(field.grid, { playerIdx: field.spawnIdx, protectIdx });
+    const ms = performance.now() - t0;
+
+    const after = bfsFrom(field.grid, field.spawnIdx)[field.exitIdx];
+    let corridorsAfter = 0;
+    let stragglers = 0;
+    for (let k = 0; k < field.grid.length; k++) {
+      if (field.grid[k] !== CORRIDOR) continue;
+      corridorsAfter++;
+      if (k !== field.spawnIdx && !protectIdx.includes(k) && degreeAt(field.grid, k) <= 1) stragglers++;
+    }
+
+    const preserved = after === before;
+    if (!preserved) { console.log(`        ! solution changed ${before} -> ${after}`); failures++; }
+    if (stragglers > 0) { console.log(`        ! ${stragglers} dead end(s) left at fixpoint`); failures++; }
+
+    console.log(
+      `   ${preserved && stragglers === 0 ? 'ok  ' : 'FAIL'} seed ${String(seed).padStart(10)}  ` +
+      `solution ${fmt(before)} -> ${fmt(after)}  ` +
+      `filled ${String(fmt(total)).padStart(9)}px  ` +
+      `corridor ${fmt(corridorsBefore)} -> ${fmt(corridorsAfter)}  ` +
+      `${ms.toFixed(0)}ms`
+    );
+  }
+}
+console.log();
+
 if (failures > 0) {
   console.error(`${failures} failure(s)`);
   process.exit(1);
 }
-console.log('all fields valid');
+console.log('all checks passed');

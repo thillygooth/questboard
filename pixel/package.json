@@ -6,6 +6,7 @@
   "description": "A maze game in which you are one white pixel.",
   "scripts": {
     "verify": "node tools/verify.js",
-    "preview": "node tools/preview.js"
+    "preview": "node tools/preview.js",
+    "frame": "node tools/frame.js"
   }
 }
