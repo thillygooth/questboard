@@ -80,8 +80,9 @@ export const MODES = {
     studyMs: 0,
     fogRadius: 70,
     sonar: { minHz: 200, maxHz: 1200 },
-    // One corridor pixel in every thousand blinks exactly like you do, so the
-    // blink stops telling you which pixel is you. See DESIGN.md §8.4.
+    // One corridor pixel in every thousand blinks in your two colours, but each
+    // at its own slower rate — so the blink stops telling you which pixel is you
+    // and only your cadence does. See DESIGN.md §8.4.
     blinkDecoys: { oneIn: 1000 },
     remapControls: { minMs: 15_000, maxMs: 35_000, cooldownMs: 3000 },
     collapse: { periodMs: 8000, radius: 300 },

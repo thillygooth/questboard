@@ -53,10 +53,18 @@ export function blinkOn(elapsedMs) {
   return elapsedMs % BLINK_PERIOD < BLINK_ON_MS;
 }
 
-/** True when a blinker with this phase offset is showing white. */
-function showingWhite(elapsedMs, phaseMs) {
-  return (elapsedMs + phaseMs) % BLINK_PERIOD >= BLINK_ON_MS;
-}
+/**
+ * False blinks run slower than the player and at their own individual rates, so
+ * the player's brisk 600ms cadence is the one rhythm on screen that nothing else
+ * shares. The tell is always there; reading it costs the attention you were
+ * spending on not dying, which is the same bargain the control display makes.
+ *
+ * The floor sits well clear of BLINK_PERIOD — telling 600ms from 650ms by eye is
+ * not a skill, it is a coin flip.
+ */
+const DECOY_PERIOD_MIN = 900;
+const DECOY_PERIOD_SPAN = 900; // so 900..1799ms, never near the player's 600ms
+const DECOY_WHITE_FRACTION = BLINK_OFF_MS / BLINK_PERIOD; // same duty as the player
 
 /**
  * Which wall pixels blink, and out of phase by how much — derived from the pixel
@@ -120,9 +128,16 @@ export class FieldRenderer {
     return mix(idx, this.decoySalt) % this.decoyOneIn === 0;
   }
 
+  /** This false blink's own blink period, in ms. Never the player's. */
+  decoyPeriod(idx) {
+    return DECOY_PERIOD_MIN + (mix(idx, 0x2545f491) % DECOY_PERIOD_SPAN);
+  }
+
   /** Whether a given false blink is in its white phase at time `t`. */
   decoyShowingWhite(idx, t) {
-    return showingWhite(t, mix(idx, 0x51ed270b) % BLINK_PERIOD);
+    const period = this.decoyPeriod(idx);
+    const phase = mix(idx, 0x51ed270b) % period;
+    return (t + phase) % period >= period * (1 - DECOY_WHITE_FRACTION);
   }
 
   colorAt(x, y, state) {

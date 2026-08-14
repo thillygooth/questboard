@@ -246,9 +246,9 @@ The blink is not a difficulty setting. It is the only thing that makes a single 
 findable in a 1920 × 1080 static field, and removing it would not make the game harder,
 only unplayable.
 
-On Excruciating that stops being true, deliberately: false blinks (§8.4) put about a
-thousand other pixels on the same rhythm, and identifying yourself falls to motion
-instead.
+On Excruciating that narrows, deliberately: false blinks (§8.4) put about a thousand
+other pixels on nearby rhythms, so identifying yourself falls to cadence and motion
+rather than to the blink alone.
 
 Off-phase is cosmetic only. Collision is continuous — you can die during the dark phase.
 
@@ -352,15 +352,27 @@ second while watching a HUD that may have just changed.
 
 ### 8.4 False blinks
 
-One corridor pixel in every thousand blinks **exactly like the player**: same two
-colours, same 400/200 duty cycle, its own phase offset. Across the field that is about
-a thousand of them; inside the 70px fog disc it works out at roughly seven, of which
-two or three are in their white phase at any instant.
+One corridor pixel in every thousand blinks in **the player's two colours** and at the
+player's duty cycle, but each at **its own slower rate** — a period drawn from
+900–1800ms against the player's 600ms, with its own phase. Across the field that is
+about a thousand of them; inside the 70px fog disc it works out at roughly seven, of
+which two or three are in their white phase at any instant.
 
-The effect is that on Excruciating the blink stops being your identifier. §6 says the
-blink is the only thing that distinguishes you from the world — here that stops being
-true, and **motion becomes the only thing that identifies you.** You are the blinking
-pixel that moves. Everything else that blinks is standing still.
+The rate is the tell. Every blinking pixel on screen looks like a candidate, and only
+one of them runs the brisk 600ms cadence that is you — so the information needed to
+identify yourself is always present and always true, and reading it costs the attention
+you were spending on not dying. That is the same bargain the control display makes in
+§8.1, and it is what keeps the mechanic on the fair side of the line.
+
+The floor of the decoy range sits well clear of 600ms deliberately. Telling 600ms from
+650ms by eye is not a skill, it is a coin flip; the nearest decoy on a sample field runs
+at 1105ms, 1.84× the player's period.
+
+The effect is that on Excruciating the mere *fact* of blinking stops being your
+identifier. §6 says the blink is the only thing that distinguishes you from the world —
+here that narrows to your **cadence and your motion**. You are the pixel blinking at
+600ms, and you are the one that moves. Everything else that blinks is slower, and
+standing still.
 
 Two constraints are load-bearing:
 
@@ -545,6 +557,7 @@ note at the top of `src/field.js` for why, and why the wall reads 2px thick on t
 | `REMAP_COOLDOWN` | 3 s | minimum between reassignments |
 | `SONAR_HZ` | 200 → 1200 | far → near |
 | `blinkDecoys.oneIn` | 1000 ✓ | corridor pixels blinking as the player; ~7 in the fog disc |
+| `DECOY_PERIOD` | 900–1800 ms ✓ | per-decoy, against the player's 600 ms |
 
 ### Move zero must never be fatal
 
