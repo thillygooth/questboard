@@ -41,6 +41,7 @@ body.playing { cursor: none; }
 }
 #hud span { min-width: 5em; }
 #hud-time { color: #f0f0f0; }
+#hud-paused { color: #ffb060; }
 
 #overlay {
   position: fixed;

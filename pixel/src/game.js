@@ -56,6 +56,7 @@ export class Game {
     this.accumulator = 0;
     this.lastCollapseMs = 0;
     this.collapsed = [];        // pixels filled this tick, for the renderer
+    this.paused = false;
 
     // Distance to the exit, for sonar and for the closest-approach stat that is
     // the only number most Excruciating runs will ever produce.
@@ -92,8 +93,25 @@ export class Game {
 
   // ── Input ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Pause, on the modes that allow it (§7 — Unpleasant only).
+   *
+   * The clock is derived from the tick count and a paused game does not tick, so
+   * pausing freezes elapsed time, the speed ramp and the collapse schedule
+   * together. Nothing has to be adjusted afterwards.
+   *
+   * The renderer keeps running while paused, which means the magnifying glass
+   * still works: pausing is how you stop and read the maze, which is exactly
+   * what Unpleasant is for.
+   */
+  togglePause() {
+    if (!this.mode.allowPause || this.state !== STATE.PLAYING) return false;
+    this.paused = !this.paused;
+    return this.paused;
+  }
+
   keyDown(code) {
-    if (this.state !== STATE.PLAYING) return;
+    if (this.state !== STATE.PLAYING || this.paused) return;
     const dir = this.controls.directionFor(code);
     if (!dir) return;
 
@@ -108,7 +126,10 @@ export class Game {
       this.die(CAUSE.STRICT);
       return;
     }
-    this.pending = { dir, movesLeft: this.mode.inputPolicy === 'buffer1' ? 1 : 1 };
+    // Both policies hold a turn for exactly one move. What separates them is the
+    // moment of the press, not the buffer: strict kills you for aiming at a wall,
+    // buffer1 simply waits one move and then drops it.
+    this.pending = { dir, movesLeft: 1 };
   }
 
   keyUp(code) {
@@ -126,7 +147,7 @@ export class Game {
 
   tick() {
     this.collapsed = [];
-    if (this.finished) return;
+    if (this.finished || this.paused) return;
 
     this.ticks++;
 
@@ -279,6 +300,7 @@ export class Game {
       cause: this.cause,
       playerIdx: this.idx,
       mapping: this.controls.mapping,
+      paused: this.paused,
       runMs: Math.max(0, this.runMs),
       moves: this.moves,
       speed: this.speed,

@@ -322,7 +322,7 @@ death.
 | Decoy gaps | none | 1–2, unreachable | 2–3, reachable and lethal (§8.2) |
 | Dead-end collapse | no | no | yes, local (§9) |
 | Blur / tab-out | ignored | **ends the run** | **ends the run** |
-| Pause | yes | no | no |
+| Pause | yes — `P` or `Esc` | no | no |
 | Target solution | 800–2,000 cells | 2,000–4,000 cells | 3,000–6,000 cells |
 | Par time | ~35–80 s | ~110–220 s | ~150–300 s |
 

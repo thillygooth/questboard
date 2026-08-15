@@ -127,6 +127,7 @@ function updateHud(snap) {
   $('hud-time').textContent = snap.state === STATE.COUNTDOWN ? '—' : secs(snap.runMs);
   $('hud-moves').textContent = fmt(snap.moves);
   $('hud-speed').textContent = `${snap.speed} px/s`;
+  $('hud-paused').classList.toggle('hidden', !snap.paused);
 }
 
 // ── Ending a run ────────────────────────────────────────────────────────────
@@ -230,6 +231,10 @@ for (const id of ['rules-back', 'board-back', 'result-back']) {
 addEventListener('keydown', (e) => {
   if (!game || game.finished) return;
   if (e.code.startsWith('Arrow')) e.preventDefault();
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (game.mode.allowPause) { game.togglePause(); updateHud(game.snapshot()); }
+    return;
+  }
   game.keyDown(e.code);
 });
 addEventListener('keyup', (e) => game?.keyUp(e.code));

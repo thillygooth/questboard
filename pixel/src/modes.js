@@ -21,7 +21,6 @@ export const MODES = {
     movement: 'step',
     stepRate: 40,
     speedRamp: 0,
-    corridorFollow: false,
     inputPolicy: 'free',
     allowReversal: true,
 
@@ -50,7 +49,6 @@ export const MODES = {
     movement: 'run',
     stepRate: 45,
     speedRamp: { per: 20_000, add: 2 },
-    corridorFollow: true,
     inputPolicy: 'buffer1',
     allowReversal: true,
 
@@ -84,7 +82,6 @@ export const MODES = {
     movement: 'run',
     stepRate: 60,
     speedRamp: { per: 20_000, add: 2 },
-    corridorFollow: true,
     inputPolicy: 'strict',
     allowReversal: true, // see DESIGN.md §13 — forbidding it removes the win state
 

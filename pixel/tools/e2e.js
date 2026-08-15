@@ -79,6 +79,22 @@ if (!followed) errors.push('lens did not follow the mouse');
 
 
 // Drive the pixel: hold a direction and see moves accumulate
+// Pause: the clock is derived from the tick count, so pausing must freeze
+// elapsed time outright rather than merely stopping movement.
+const clock = () => page.textContent('#hud-time');
+await page.keyboard.press('KeyP');
+const pausedAt = await clock();
+const pausedShown = await page.isVisible('#hud-paused');
+await page.waitForTimeout(600);
+const stillPaused = await clock();
+await page.keyboard.press('KeyP');
+await page.waitForTimeout(400);
+const resumed = await clock();
+console.log(`  pause: ${pausedAt} -> ${stillPaused} after 600ms ${pausedAt === stillPaused ? '(frozen)' : '(DID NOT FREEZE)'}; indicator ${pausedShown ? 'shown' : 'MISSING'}; resumed -> ${resumed}`);
+if (pausedAt !== stillPaused) errors.push('pause did not freeze the clock');
+if (!pausedShown) errors.push('PAUSED indicator not shown');
+if (resumed === stillPaused) errors.push('clock did not resume after unpausing');
+
 for (const key of ['ArrowRight','ArrowDown','ArrowLeft','ArrowUp']) {
   await page.keyboard.down(key);
   await page.waitForTimeout(120);
